@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: lab-results-interpreter
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: XAI_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
