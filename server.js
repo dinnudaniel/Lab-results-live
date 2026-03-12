@@ -9,12 +9,13 @@ const PORT = process.env.PORT || 3000;
 
 function getClient() {
   return new OpenAI({
-    apiKey: process.env.XAI_API_KEY || "missing",
-    baseURL: "https://api.x.ai/v1",
+    apiKey: process.env.OPENROUTER_API_KEY || "missing",
+    baseURL: "https://openrouter.ai/api/v1",
   });
 }
 
-const GROK_MODEL = "grok-2-vision-1212";
+const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
+const CHAT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -96,7 +97,7 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
     });
 
     const stream = await getClient().chat.completions.create({
-      model: GROK_MODEL,
+      model: VISION_MODEL,
       max_tokens: 6000,
       stream: true,
       messages: [
@@ -117,7 +118,7 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   } catch (err) {
     console.error("Analyze error:", err?.status, err?.message, err?.error);
     const msg = err.status === 401
-      ? "Invalid API key. Check your XAI_API_KEY."
+      ? "Invalid API key. Check your OPENROUTER_API_KEY."
       : err.status === 429
       ? "Too many requests. Please wait and try again."
       : `Error: ${err?.error?.message || err?.message || "Unknown error"} (${err?.status || 500})`;
@@ -145,7 +146,7 @@ app.post("/api/chat", async (req, res) => {
       : CHAT_SYSTEM;
 
     const stream = await getClient().chat.completions.create({
-      model: "grok-2-1212",
+      model: CHAT_MODEL,
       max_tokens: 1024,
       stream: true,
       messages: [
@@ -164,7 +165,6 @@ app.post("/api/chat", async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Chat error:", err);
     console.error("Chat error:", err?.status, err?.message);
     res.write(`data: ${JSON.stringify({ error: `Chat error: ${err?.message || "Unknown"}` })}\n\n`);
     res.end();
@@ -174,14 +174,14 @@ app.post("/api/chat", async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    model: GROK_MODEL,
-    hasApiKey: !!process.env.XAI_API_KEY && process.env.XAI_API_KEY !== "missing",
+    model: VISION_MODEL,
+    hasApiKey: !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== "missing",
   });
 });
 
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
-  if (!process.env.XAI_API_KEY) {
-    console.warn("⚠️  XAI_API_KEY not set.");
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.warn("⚠️  OPENROUTER_API_KEY not set.");
   }
 });

@@ -5,7 +5,7 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - key: XAI_API_KEY
+      - key: OPENROUTER_API_KEY
         sync: false
       - key: NODE_ENV
         value: production
