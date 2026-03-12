@@ -14,8 +14,31 @@ function getClient() {
   });
 }
 
-const VISION_MODEL = "mistralai/mistral-small-3.1-24b-instruct:free";
-const CHAT_MODEL = "mistralai/mistral-small-3.1-24b-instruct:free";
+const VISION_MODELS = [
+  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "google/gemma-3-27b-it:free",
+  "moonshotai/kimi-vl-a3b-thinking:free",
+  "google/gemma-3-12b-it:free",
+];
+const CHAT_MODELS = [
+  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "google/gemma-3-27b-it:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+];
+
+async function callWithFallback(models, createFn) {
+  let lastErr;
+  for (const model of models) {
+    try {
+      return await createFn(model);
+    } catch (err) {
+      console.error(`Model ${model} failed:`, err?.status, err?.message);
+      lastErr = err;
+      if (err?.status !== 429 && err?.status !== 400 && err?.status !== 404) throw err;
+    }
+  }
+  throw lastErr;
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -96,15 +119,17 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
       text: `These are ${files.length} page(s) of lab results. Please explain ALL results shown across every image in plain English. Tell me what each test is, what my result means, and whether it looks normal.`,
     });
 
-    const stream = await getClient().chat.completions.create({
-      model: VISION_MODEL,
-      max_tokens: 6000,
-      stream: true,
-      messages: [
-        { role: "system", content: ANALYZE_SYSTEM },
-        { role: "user", content },
-      ],
-    });
+    const stream = await callWithFallback(VISION_MODELS, (model) =>
+      getClient().chat.completions.create({
+        model,
+        max_tokens: 6000,
+        stream: true,
+        messages: [
+          { role: "system", content: ANALYZE_SYSTEM },
+          { role: "user", content },
+        ],
+      })
+    );
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
@@ -145,15 +170,17 @@ app.post("/api/chat", async (req, res) => {
       ? `${CHAT_SYSTEM}\n\n--- PATIENT'S LAB ANALYSIS ---\n${analysisContext}\n--- END OF ANALYSIS ---`
       : CHAT_SYSTEM;
 
-    const stream = await getClient().chat.completions.create({
-      model: CHAT_MODEL,
-      max_tokens: 1024,
-      stream: true,
-      messages: [
-        { role: "system", content: systemWithContext },
-        ...messages,
-      ],
-    });
+    const stream = await callWithFallback(CHAT_MODELS, (model) =>
+      getClient().chat.completions.create({
+        model,
+        max_tokens: 1024,
+        stream: true,
+        messages: [
+          { role: "system", content: systemWithContext },
+          ...messages,
+        ],
+      })
+    );
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
@@ -174,7 +201,7 @@ app.post("/api/chat", async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    model: VISION_MODEL,
+    model: VISION_MODELS[0],
     hasApiKey: !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== "missing",
   });
 });
