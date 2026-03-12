@@ -115,12 +115,12 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Analyze error:", err);
+    console.error("Analyze error:", err?.status, err?.message, err?.error);
     const msg = err.status === 401
       ? "Invalid API key. Check your XAI_API_KEY."
       : err.status === 429
       ? "Too many requests. Please wait and try again."
-      : "Something went wrong. Please try again.";
+      : `Error: ${err?.error?.message || err?.message || "Unknown error"} (${err?.status || 500})`;
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
   }
@@ -145,7 +145,7 @@ app.post("/api/chat", async (req, res) => {
       : CHAT_SYSTEM;
 
     const stream = await getClient().chat.completions.create({
-      model: "grok-3-mini-fast",
+      model: "grok-2-1212",
       max_tokens: 1024,
       stream: true,
       messages: [
@@ -165,31 +165,8 @@ app.post("/api/chat", async (req, res) => {
     res.end();
   } catch (err) {
     console.error("Chat error:", err);
-    // Fallback to vision model if mini not available
-    if (err.status === 404) {
-      try {
-        const systemWithContext = analysisContext
-          ? `${CHAT_SYSTEM}\n\n--- LAB ANALYSIS ---\n${analysisContext}`
-          : CHAT_SYSTEM;
-        const stream = await getClient().chat.completions.create({
-          model: GROK_MODEL,
-          max_tokens: 1024,
-          stream: true,
-          messages: [
-            { role: "system", content: systemWithContext },
-            ...messages,
-          ],
-        });
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content;
-          if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
-        }
-        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-        res.end();
-        return;
-      } catch (e) { /* fall through */ }
-    }
-    res.write(`data: ${JSON.stringify({ error: "Could not get a response. Please try again." })}\n\n`);
+    console.error("Chat error:", err?.status, err?.message);
+    res.write(`data: ${JSON.stringify({ error: `Chat error: ${err?.message || "Unknown"}` })}\n\n`);
     res.end();
   }
 });
