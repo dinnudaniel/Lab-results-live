@@ -2,25 +2,21 @@ require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
 const sharp = require("sharp");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "missing");
-const MODEL = "gemini-2.0-flash";
-
-async function resizeImage(buffer, mimetype) {
-  try {
-    return await sharp(buffer)
-      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-  } catch {
-    return buffer; // fallback to original if resize fails
-  }
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.GROQ_API_KEY || "missing",
+    baseURL: "https://api.groq.com/openai/v1",
+  });
 }
+
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const CHAT_MODEL = "llama-3.3-70b-versatile";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -34,7 +30,18 @@ const upload = multer({
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json({ limit: "10mb" }));
 
-const ANALYZE_PROMPT = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
+async function resizeImage(buffer) {
+  try {
+    return await sharp(buffer)
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+  } catch {
+    return buffer;
+  }
+}
+
+const ANALYZE_SYSTEM = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
 
 Your job:
 1. Read EVERY test and result visible across ALL provided images
@@ -61,9 +68,7 @@ FORMAT:
 **What it means:** ...
 
 ---
-⚠️ *For informational purposes only. Please discuss with your doctor.*
-
-These are lab result images. Please explain ALL results shown across every image in plain English.`;
+⚠️ *For informational purposes only. Please discuss with your doctor.*`;
 
 const CHAT_SYSTEM = `You are MedExplain AI, a friendly medical assistant helping a patient understand their lab results.
 
@@ -90,21 +95,32 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL });
+    const resized = await Promise.all(files.map(f => resizeImage(f.buffer)));
 
-    const resized = await Promise.all(files.map(f => resizeImage(f.buffer, f.mimetype)));
-    const parts = resized.map(buf => ({
-      inlineData: {
-        data: buf.toString("base64"),
-        mimeType: "image/jpeg",
+    const content = resized.map(buf => ({
+      type: "image_url",
+      image_url: {
+        url: `data:image/jpeg;base64,${buf.toString("base64")}`,
       },
     }));
-    parts.push({ text: ANALYZE_PROMPT });
 
-    const result = await model.generateContentStream(parts);
+    content.push({
+      type: "text",
+      text: `These are ${files.length} page(s) of lab results. Please explain ALL results shown across every image in plain English. Tell me what each test is, what my result means, and whether it looks normal.`,
+    });
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    const stream = await getClient().chat.completions.create({
+      model: VISION_MODEL,
+      max_tokens: 6000,
+      stream: true,
+      messages: [
+        { role: "system", content: ANALYZE_SYSTEM },
+        { role: "user", content },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content;
       if (text) {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
@@ -113,13 +129,12 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Analyze error:", err?.message, err?.status);
-    const status = err?.status || err?.httpStatusCode;
-    const msg = status === 401 || status === 403
-      ? "Invalid API key. Check your GOOGLE_API_KEY."
-      : status === 429
+    console.error("Analyze error:", err?.status, err?.message, err?.error);
+    const msg = err.status === 401
+      ? "Invalid API key. Check your GROQ_API_KEY."
+      : err.status === 429
       ? "Too many requests. Please wait a moment and try again."
-      : `Error: ${err?.message || "Unknown error"}`;
+      : `Error: ${err?.error?.message || err?.message || "Unknown error"} (${err?.status || 500})`;
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
   }
@@ -143,22 +158,18 @@ app.post("/api/chat", async (req, res) => {
       ? `${CHAT_SYSTEM}\n\n--- PATIENT'S LAB ANALYSIS ---\n${analysisContext}\n--- END OF ANALYSIS ---`
       : CHAT_SYSTEM;
 
-    const model = genAI.getGenerativeModel({
-      model: MODEL,
-      systemInstruction: systemWithContext,
+    const stream = await getClient().chat.completions.create({
+      model: CHAT_MODEL,
+      max_tokens: 1024,
+      stream: true,
+      messages: [
+        { role: "system", content: systemWithContext },
+        ...messages,
+      ],
     });
 
-    const history = messages.slice(0, -1).map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
-
-    const chat = model.startChat({ history });
-    const lastMsg = messages[messages.length - 1].content;
-    const result = await chat.sendMessageStream(lastMsg);
-
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content;
       if (text) {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
@@ -167,7 +178,7 @@ app.post("/api/chat", async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Chat error:", err?.message);
+    console.error("Chat error:", err?.status, err?.message);
     res.write(`data: ${JSON.stringify({ error: `Chat error: ${err?.message || "Unknown"}` })}\n\n`);
     res.end();
   }
@@ -176,14 +187,14 @@ app.post("/api/chat", async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    model: MODEL,
-    hasApiKey: !!process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY !== "missing",
+    model: VISION_MODEL,
+    hasApiKey: !!process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== "missing",
   });
 });
 
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
-  if (!process.env.GOOGLE_API_KEY) {
-    console.warn("⚠️  GOOGLE_API_KEY not set.");
+  if (!process.env.GROQ_API_KEY) {
+    console.warn("⚠️  GROQ_API_KEY not set.");
   }
 });
