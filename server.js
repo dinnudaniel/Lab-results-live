@@ -9,36 +9,13 @@ const PORT = process.env.PORT || 3000;
 
 function getClient() {
   return new OpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY || "missing",
-    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.GOOGLE_API_KEY || "missing",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
   });
 }
 
-const VISION_MODELS = [
-  "mistralai/mistral-small-3.1-24b-instruct:free",
-  "google/gemma-3-27b-it:free",
-  "moonshotai/kimi-vl-a3b-thinking:free",
-  "google/gemma-3-12b-it:free",
-];
-const CHAT_MODELS = [
-  "mistralai/mistral-small-3.1-24b-instruct:free",
-  "google/gemma-3-27b-it:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-];
-
-async function callWithFallback(models, createFn) {
-  let lastErr;
-  for (const model of models) {
-    try {
-      return await createFn(model);
-    } catch (err) {
-      console.error(`Model ${model} failed:`, err?.status, err?.message);
-      lastErr = err;
-      if (err?.status !== 429 && err?.status !== 400 && err?.status !== 404) throw err;
-    }
-  }
-  throw lastErr;
-}
+const VISION_MODEL = "gemini-2.0-flash";
+const CHAT_MODEL = "gemini-2.0-flash";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -106,7 +83,6 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
-    // Build content: all images first, then the question
     const content = files.map(file => ({
       type: "image_url",
       image_url: {
@@ -119,17 +95,15 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
       text: `These are ${files.length} page(s) of lab results. Please explain ALL results shown across every image in plain English. Tell me what each test is, what my result means, and whether it looks normal.`,
     });
 
-    const stream = await callWithFallback(VISION_MODELS, (model) =>
-      getClient().chat.completions.create({
-        model,
-        max_tokens: 6000,
-        stream: true,
-        messages: [
-          { role: "system", content: ANALYZE_SYSTEM },
-          { role: "user", content },
-        ],
-      })
-    );
+    const stream = await getClient().chat.completions.create({
+      model: VISION_MODEL,
+      max_tokens: 6000,
+      stream: true,
+      messages: [
+        { role: "system", content: ANALYZE_SYSTEM },
+        { role: "user", content },
+      ],
+    });
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
@@ -143,9 +117,9 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   } catch (err) {
     console.error("Analyze error:", err?.status, err?.message, err?.error);
     const msg = err.status === 401
-      ? "Invalid API key. Check your OPENROUTER_API_KEY."
+      ? "Invalid API key. Check your GOOGLE_API_KEY."
       : err.status === 429
-      ? "Too many requests. Please wait and try again."
+      ? "Too many requests. Please wait a moment and try again."
       : `Error: ${err?.error?.message || err?.message || "Unknown error"} (${err?.status || 500})`;
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
@@ -170,17 +144,15 @@ app.post("/api/chat", async (req, res) => {
       ? `${CHAT_SYSTEM}\n\n--- PATIENT'S LAB ANALYSIS ---\n${analysisContext}\n--- END OF ANALYSIS ---`
       : CHAT_SYSTEM;
 
-    const stream = await callWithFallback(CHAT_MODELS, (model) =>
-      getClient().chat.completions.create({
-        model,
-        max_tokens: 1024,
-        stream: true,
-        messages: [
-          { role: "system", content: systemWithContext },
-          ...messages,
-        ],
-      })
-    );
+    const stream = await getClient().chat.completions.create({
+      model: CHAT_MODEL,
+      max_tokens: 1024,
+      stream: true,
+      messages: [
+        { role: "system", content: systemWithContext },
+        ...messages,
+      ],
+    });
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
@@ -201,14 +173,14 @@ app.post("/api/chat", async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    model: VISION_MODELS[0],
-    hasApiKey: !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== "missing",
+    model: VISION_MODEL,
+    hasApiKey: !!process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY !== "missing",
   });
 });
 
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.warn("⚠️  OPENROUTER_API_KEY not set.");
+  if (!process.env.GOOGLE_API_KEY) {
+    console.warn("⚠️  GOOGLE_API_KEY not set.");
   }
 });
