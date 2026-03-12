@@ -7,7 +7,6 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// xAI Grok uses an OpenAI-compatible API — lazy init so missing key only fails at request time
 function getClient() {
   return new OpenAI({
     apiKey: process.env.XAI_API_KEY || "missing",
@@ -17,93 +16,92 @@ function getClient() {
 
 const GROK_MODEL = "grok-2-vision-1212";
 
-// Store image in memory (no disk writes needed)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed (JPEG, PNG, GIF, WebP)"));
-    }
+    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error("Images only"));
   },
 });
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
-const SYSTEM_PROMPT = `You are MedExplain AI, a friendly medical assistant that helps people understand their lab test results in plain, everyday English.
+const ANALYZE_SYSTEM = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
 
-Your job is to:
-1. Read every test/result visible on the lab report image
-2. Explain what each test is — in simple words anyone can understand
-3. Explain what the result means (normal, abnormal, high, low, positive, negative, etc.)
-4. Use clear, warm, non-scary language
-5. For pregnancy-related tests (e.g. NIPT, amniocentesis): if sex/gender information is present, state it clearly
-6. Group related tests together where helpful (e.g. Complete Blood Count, Liver Panel, etc.)
+Your job:
+1. Read EVERY test and result visible across ALL provided images
+2. Explain what each test is in simple words
+3. Explain what the result means (normal, abnormal, high, low, positive, negative)
+4. Use warm, clear, non-scary language
+5. Group related tests (e.g. Blood Count, Liver Panel, Infection Screen)
+6. For pregnancy tests (NIPT, amniocentesis): clearly state sex if shown
 
-IMPORTANT RULES:
-- Never say something is definitively wrong or dangerous — always recommend the person speak with their doctor
-- Be accurate: for example, HCV = Hepatitis C Virus (NOT HIV/AIDS), HIV = Human Immunodeficiency Virus, TSH = Thyroid Stimulating Hormone, etc.
-- If a result is outside the reference range, explain what that might mean simply, but say a doctor should review it
-- If you cannot read a value clearly from the image, say so
-- Always end your response with a gentle reminder that this explanation is for information only and not a substitute for professional medical advice
+RULES:
+- HCV = Hepatitis C Virus (NOT AIDS). HIV = Human Immunodeficiency Virus. Never mix these up.
+- If a result is outside range, explain simply but say a doctor should review it
+- If you cannot read a value, say so
+- End with a reminder to consult a doctor
 
-FORMAT your response like this:
+FORMAT:
 ---
 ## 🔬 Your Lab Results Explained
 
-[For each test or group of tests:]
-
-### [Test Name in Plain English] — [Medical Abbreviation]
-**What this tests:** [1-2 sentence plain English explanation]
-**Your result:** [value/result]
-**Reference range:** [if visible]
-**What it means:** [plain English explanation of the result]
+### [Plain English Name] — [Abbreviation]
+**What this tests:** ...
+**Your result:** ...
+**Reference range:** ... (if visible)
+**What it means:** ...
 
 ---
-[If pregnancy gender test present, include clearly]
+⚠️ *For informational purposes only. Please discuss with your doctor.*`;
 
----
-⚠️ *This explanation is for informational purposes only and is not medical advice. Please discuss your results with your doctor or healthcare provider.*`;
+const CHAT_SYSTEM = `You are MedExplain AI, a friendly medical assistant helping a patient understand their lab results.
 
-app.post("/api/analyze", upload.single("labImage"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Please upload an image of your lab results." });
+The patient's lab analysis has already been done and is provided as context. Your job is to answer their follow-up questions clearly and simply.
+
+RULES:
+- Answer in plain English, no medical jargon
+- Be warm and reassuring but honest
+- For questions about diagnosis, treatment, or medication: ALWAYS say "I'm not able to give medical advice on that — please speak with your doctor about this"
+- For questions you're not confident about: say "That's a great question for your doctor — I'd recommend asking them directly"
+- Never guess at a diagnosis
+- Keep answers focused and concise`;
+
+// ── Analyze: accepts up to 5 images ──
+app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
+  const files = req.files;
+  if (!files || files.length === 0) {
+    return res.status(400).json({ error: "Please upload at least one image." });
   }
 
-  const imageBase64 = req.file.buffer.toString("base64");
-  const mediaType = req.file.mimetype;
-  const imageUrl = `data:${mediaType};base64,${imageBase64}`;
-
-  // Set up SSE headers before streaming
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
+    // Build content: all images first, then the question
+    const content = files.map(file => ({
+      type: "image_url",
+      image_url: {
+        url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+      },
+    }));
+
+    content.push({
+      type: "text",
+      text: `These are ${files.length} page(s) of lab results. Please explain ALL results shown across every image in plain English. Tell me what each test is, what my result means, and whether it looks normal.`,
+    });
+
     const stream = await getClient().chat.completions.create({
       model: GROK_MODEL,
-      max_tokens: 4096,
+      max_tokens: 6000,
       stream: true,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: imageUrl },
-            },
-            {
-              type: "text",
-              text: "Please explain all the lab results shown in this image in plain English. Tell me what each test is, what my result means, and whether it looks normal or not.",
-            },
-          ],
-        },
+        { role: "system", content: ANALYZE_SYSTEM },
+        { role: "user", content },
       ],
     });
 
@@ -117,22 +115,85 @@ app.post("/api/analyze", upload.single("labImage"), async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Grok API error:", err);
-
-    const status = err.status || 500;
-    const messages = {
-      401: "Invalid API key. Please check your XAI_API_KEY in the .env file.",
-      429: "Too many requests. Please wait a moment and try again.",
-      400: "Could not process the image. Please try a clearer photo.",
-    };
-
-    const errorMsg = messages[status] || "Something went wrong. Please try again.";
-    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    console.error("Analyze error:", err);
+    const msg = err.status === 401
+      ? "Invalid API key. Check your XAI_API_KEY."
+      : err.status === 429
+      ? "Too many requests. Please wait and try again."
+      : "Something went wrong. Please try again.";
+    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
   }
 });
 
-// Health check
+// ── Chat: follow-up questions after analysis ──
+app.post("/api/chat", async (req, res) => {
+  const { messages, analysisContext } = req.body;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "No messages provided." });
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  try {
+    const systemWithContext = analysisContext
+      ? `${CHAT_SYSTEM}\n\n--- PATIENT'S LAB ANALYSIS ---\n${analysisContext}\n--- END OF ANALYSIS ---`
+      : CHAT_SYSTEM;
+
+    const stream = await getClient().chat.completions.create({
+      model: "grok-3-mini-fast",
+      max_tokens: 1024,
+      stream: true,
+      messages: [
+        { role: "system", content: systemWithContext },
+        ...messages,
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content;
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err) {
+    console.error("Chat error:", err);
+    // Fallback to vision model if mini not available
+    if (err.status === 404) {
+      try {
+        const systemWithContext = analysisContext
+          ? `${CHAT_SYSTEM}\n\n--- LAB ANALYSIS ---\n${analysisContext}`
+          : CHAT_SYSTEM;
+        const stream = await getClient().chat.completions.create({
+          model: GROK_MODEL,
+          max_tokens: 1024,
+          stream: true,
+          messages: [
+            { role: "system", content: systemWithContext },
+            ...messages,
+          ],
+        });
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content;
+          if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+        return;
+      } catch (e) { /* fall through */ }
+    }
+    res.write(`data: ${JSON.stringify({ error: "Could not get a response. Please try again." })}\n\n`);
+    res.end();
+  }
+});
+
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
@@ -142,8 +203,8 @@ app.get("/api/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n✅ Lab Results Interpreter (Grok) running at http://localhost:${PORT}`);
+  console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
   if (!process.env.XAI_API_KEY) {
-    console.warn("⚠️  Warning: XAI_API_KEY is not set. Add it to your .env file.");
+    console.warn("⚠️  XAI_API_KEY not set.");
   }
 });

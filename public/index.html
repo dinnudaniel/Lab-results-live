@@ -6,546 +6,625 @@
   <title>MedExplain AI — Lab Results in Plain English</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --brand: #2563eb;
-      --brand-dark: #1d4ed8;
-      --brand-light: #eff6ff;
-      --success: #16a34a;
-      --warning: #d97706;
-      --danger: #dc2626;
-      --gray-50: #f9fafb;
-      --gray-100: #f3f4f6;
-      --gray-200: #e5e7eb;
-      --gray-400: #9ca3af;
-      --gray-600: #4b5563;
-      --gray-700: #374151;
-      --gray-900: #111827;
-      --radius: 12px;
-      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+      --brand: #2563eb; --brand-dark: #1d4ed8; --brand-light: #eff6ff;
+      --green: #16a34a; --green-light: #f0fdf4;
+      --amber: #d97706; --amber-light: #fffbeb;
+      --red: #dc2626; --red-light: #fef2f2;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-400: #9ca3af; --gray-600: #4b5563; --gray-700: #374151; --gray-900: #111827;
+      --radius: 14px; --shadow: 0 4px 24px rgba(0,0,0,0.08);
     }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--gray-50);
-      color: var(--gray-900);
-      min-height: 100vh;
-      line-height: 1.6;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
 
     /* ── Header ── */
-    header {
-      background: white;
-      border-bottom: 1px solid var(--gray-200);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .logo {
-      width: 40px;
-      height: 40px;
-      background: var(--brand);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-    header h1 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--gray-900);
-    }
-    header p {
-      font-size: 0.8rem;
-      color: var(--gray-600);
-    }
+    header { background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 20; }
+    .logo { width: 40px; height: 40px; background: var(--brand); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    header p { font-size: 0.78rem; color: var(--gray-600); }
 
-    /* ── Main layout ── */
-    main {
-      max-width: 780px;
-      margin: 0 auto;
-      padding: 32px 16px 64px;
-    }
+    /* ── Page sections ── */
+    #page-upload { display: block; }
+    #page-chat   { display: none; }
 
-    /* ── Hero ── */
-    .hero {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .hero h2 {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--gray-900);
-      margin-bottom: 8px;
-      line-height: 1.2;
-    }
+    /* ── Upload page ── */
+    .upload-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 80px; }
+    .hero { text-align: center; margin-bottom: 24px; }
+    .hero h2 { font-size: 1.7rem; font-weight: 800; line-height: 1.2; margin-bottom: 6px; }
     .hero h2 span { color: var(--brand); }
-    .hero p {
-      font-size: 1rem;
-      color: var(--gray-600);
-      max-width: 480px;
-      margin: 0 auto;
-    }
+    .hero p { color: var(--gray-600); font-size: 0.92rem; }
 
-    /* ── Features strip ── */
-    .features {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 32px;
-    }
-    .feature-badge {
-      background: white;
-      border: 1px solid var(--gray-200);
-      border-radius: 100px;
-      padding: 6px 16px;
-      font-size: 0.82rem;
-      color: var(--gray-700);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 16px; }
 
-    /* ── Upload card ── */
-    .card {
-      background: white;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 32px;
-      margin-bottom: 24px;
-    }
+    /* Upload buttons */
+    .upload-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .upload-btn-opt { display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px; padding: 20px 12px; border: 2px dashed var(--gray-200); border-radius: 10px;
+      cursor: pointer; transition: all 0.2s; background: var(--gray-50); position: relative; }
+    .upload-btn-opt:hover { border-color: var(--brand); background: var(--brand-light); }
+    .upload-btn-opt input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-btn-opt .icon { font-size: 2rem; }
+    .upload-btn-opt span { font-size: 0.85rem; font-weight: 600; color: var(--gray-700); text-align: center; }
+    .upload-btn-opt small { font-size: 0.72rem; color: var(--gray-400); }
 
-    .drop-zone {
-      border: 2px dashed var(--gray-200);
-      border-radius: 10px;
-      padding: 48px 24px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--brand);
-      background: var(--brand-light);
-    }
-    .drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
-    .drop-icon {
-      font-size: 3rem;
-      margin-bottom: 12px;
-    }
-    .drop-zone h3 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--gray-900);
-      margin-bottom: 6px;
-    }
-    .drop-zone p {
-      font-size: 0.85rem;
-      color: var(--gray-400);
-    }
+    /* Image grid */
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .img-thumb { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: var(--gray-100); }
+    .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .img-thumb .remove-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+      background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%;
+      font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      line-height: 1; }
+    .img-count { font-size: 0.8rem; color: var(--gray-600); text-align: center; margin-bottom: 12px; }
 
-    /* ── Preview ── */
-    .preview-wrap {
-      display: none;
-      margin-top: 16px;
-      text-align: center;
-    }
-    .preview-wrap.visible { display: block; }
-    .preview-wrap img {
-      max-width: 100%;
-      max-height: 320px;
-      border-radius: 8px;
-      border: 1px solid var(--gray-200);
-      object-fit: contain;
-    }
-    .preview-name {
-      font-size: 0.8rem;
-      color: var(--gray-600);
-      margin-top: 6px;
-    }
-
-    /* ── Button ── */
-    .analyze-btn {
-      width: 100%;
-      padding: 14px;
-      background: var(--brand);
-      color: white;
-      font-size: 1rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin-top: 20px;
-      transition: background 0.2s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .analyze-btn:hover { background: var(--brand-dark); }
-    .analyze-btn:active { transform: scale(0.99); }
-    .analyze-btn:disabled {
-      background: var(--gray-400);
-      cursor: not-allowed;
-    }
-
-    /* ── Spinner ── */
-    .spinner {
-      width: 18px;
-      height: 18px;
-      border: 2px solid rgba(255,255,255,0.4);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
-    }
+    /* Analyze button */
+    .analyze-btn { width: 100%; padding: 15px; background: var(--brand); color: white;
+      font-size: 1rem; font-weight: 700; border: none; border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s; }
+    .analyze-btn:hover:not(:disabled) { background: var(--brand-dark); }
+    .analyze-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Results ── */
-    .results-card {
-      background: white;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 32px;
-      display: none;
-    }
-    .results-card.visible { display: block; }
+    /* Progress */
+    .progress-box { background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 20px; text-align: center; display: none; }
+    .progress-box.visible { display: block; }
+    .progress-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; margin-top: 12px; }
+    .step { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--gray-400); }
+    .step.active { color: var(--gray-900); font-weight: 600; }
+    .step.done { color: var(--green); }
+    .step-icon { font-size: 1.1rem; width: 24px; text-align: center; }
 
-    .results-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--gray-200);
-    }
-    .results-header h2 {
-      font-size: 1.15rem;
-      font-weight: 700;
-    }
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    .status-dot.done { animation: none; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
+    /* ── Chat page ── */
+    #page-chat { flex-direction: column; height: 100vh; }
+    #page-chat.active { display: flex; }
 
-    /* ── Markdown-rendered output ── */
-    #result-body {
-      font-size: 0.95rem;
-      color: var(--gray-700);
-      line-height: 1.8;
-    }
-    #result-body h2 {
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: var(--gray-900);
-      margin: 20px 0 8px;
-    }
-    #result-body h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--brand);
-      margin: 18px 0 6px;
-      padding: 10px 14px;
-      background: var(--brand-light);
-      border-left: 3px solid var(--brand);
-      border-radius: 0 6px 6px 0;
-    }
-    #result-body p { margin-bottom: 10px; }
-    #result-body strong { color: var(--gray-900); }
-    #result-body em { color: var(--gray-600); font-style: normal; font-size: 0.88rem; }
-    #result-body hr {
-      border: none;
-      border-top: 1px solid var(--gray-200);
-      margin: 20px 0;
-    }
-    #result-body blockquote, #result-body em:last-child {
-      display: block;
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 12px 16px;
-      color: #92400e;
-      font-size: 0.85rem;
-      margin-top: 16px;
-    }
+    .chat-header { background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .chat-header button { margin-left: auto; background: none; border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; cursor: pointer; color: var(--gray-700); }
+    .chat-header button:hover { background: var(--gray-100); }
+    .chat-title { font-weight: 700; font-size: 1rem; }
+    .chat-sub { font-size: 0.75rem; color: var(--gray-600); }
 
-    /* ── Disclaimer ── */
-    .disclaimer {
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-size: 0.83rem;
-      color: #92400e;
-      margin-top: 12px;
-      display: flex;
-      gap: 8px;
-    }
+    /* Chat messages area */
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
-    /* ── Error ── */
-    .error-box {
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      padding: 14px 16px;
-      color: var(--danger);
-      font-size: 0.9rem;
-      display: none;
-      margin-top: 16px;
-    }
+    /* Analysis result bubble */
+    .analysis-bubble { background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 20px; border-left: 4px solid var(--brand); }
+    .analysis-bubble h4 { font-size: 0.8rem; color: var(--brand); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+    .analysis-content { font-size: 0.9rem; color: var(--gray-700); line-height: 1.75; }
+    .analysis-content h2 { font-size: 1.05rem; font-weight: 800; color: var(--gray-900); margin: 16px 0 6px; }
+    .analysis-content h3 { font-size: 0.92rem; font-weight: 700; color: var(--brand);
+      background: var(--brand-light); padding: 8px 12px; border-left: 3px solid var(--brand);
+      border-radius: 0 6px 6px 0; margin: 14px 0 6px; }
+    .analysis-content p { margin-bottom: 8px; }
+    .analysis-content strong { color: var(--gray-900); }
+    .analysis-content hr { border: none; border-top: 1px solid var(--gray-200); margin: 14px 0; }
+    .analysis-content em { font-style: normal; font-size: 0.83rem; color: var(--amber); }
+
+    /* Chat message bubbles */
+    .msg { display: flex; flex-direction: column; max-width: 85%; }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.ai { align-self: flex-start; align-items: flex-start; }
+    .msg-bubble { padding: 12px 16px; border-radius: 14px; font-size: 0.92rem; line-height: 1.6; }
+    .msg.user .msg-bubble { background: var(--brand); color: white; border-bottom-right-radius: 4px; }
+    .msg.ai .msg-bubble { background: white; color: var(--gray-900); box-shadow: var(--shadow);
+      border-bottom-left-radius: 4px; }
+    .msg-bubble strong { font-weight: 700; }
+    .msg-bubble em { font-style: italic; }
+    .msg-label { font-size: 0.72rem; color: var(--gray-400); margin-bottom: 4px; padding: 0 4px; }
+
+    /* Doctor banner */
+    .doctor-banner { background: var(--amber-light); border: 1px solid #fcd34d;
+      border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; color: #92400e;
+      display: flex; gap: 10px; align-items: flex-start; }
+
+    /* Typing indicator */
+    .typing { display: flex; gap: 4px; padding: 14px 18px; background: white;
+      border-radius: 14px; border-bottom-left-radius: 4px; box-shadow: var(--shadow);
+      align-self: flex-start; }
+    .typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-400);
+      animation: bounce 1.2s ease-in-out infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+    /* Chat input */
+    .chat-input-bar { background: white; border-top: 1px solid var(--gray-200);
+      padding: 12px 16px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+    .chat-input-bar textarea { flex: 1; border: 1px solid var(--gray-200); border-radius: 10px;
+      padding: 10px 14px; font-size: 0.92rem; resize: none; max-height: 120px; min-height: 44px;
+      font-family: inherit; line-height: 1.5; outline: none; }
+    .chat-input-bar textarea:focus { border-color: var(--brand); }
+    .send-btn { width: 44px; height: 44px; background: var(--brand); color: white;
+      border: none; border-radius: 10px; font-size: 1.3rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .send-btn:hover { background: var(--brand-dark); }
+    .send-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
+
+    /* Disclaimer */
+    .disclaimer { background: var(--amber-light); border: 1px solid #fcd34d; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.78rem; color: #92400e; margin-top: 8px; }
+
+    /* Error */
+    .error-box { background: var(--red-light); border: 1px solid #fca5a5;
+      border-radius: 8px; padding: 12px 16px; color: var(--red); font-size: 0.88rem;
+      display: none; margin-top: 12px; }
     .error-box.visible { display: block; }
 
-    /* ── Footer ── */
-    footer {
-      text-align: center;
-      padding: 24px;
-      color: var(--gray-400);
-      font-size: 0.8rem;
-      border-top: 1px solid var(--gray-200);
-    }
+    footer { text-align: center; padding: 20px; color: var(--gray-400); font-size: 0.75rem;
+      border-top: 1px solid var(--gray-200); }
 
     @media (max-width: 480px) {
-      .hero h2 { font-size: 1.5rem; }
-      .card { padding: 20px; }
-      .drop-zone { padding: 32px 16px; }
+      .hero h2 { font-size: 1.4rem; }
+      .card { padding: 16px; }
+      .upload-btns { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
 
+<!-- ══════════════════════════════════════
+     PAGE 1: UPLOAD
+══════════════════════════════════════ -->
+<div id="page-upload">
   <header>
     <div class="logo">🔬</div>
-    <div>
-      <h1>MedExplain AI</h1>
-      <p>Lab results in plain English</p>
-    </div>
+    <div><h1>MedExplain AI</h1><p>Lab results in plain English</p></div>
   </header>
 
-  <main>
+  <div class="upload-wrap">
     <div class="hero">
       <h2>Understand Your <span>Lab Results</span></h2>
-      <p>Take a photo of your medical test results and get a clear, plain-English explanation — no medical degree required.</p>
-    </div>
-
-    <div class="features">
-      <div class="feature-badge">🩸 Blood tests</div>
-      <div class="feature-badge">🫀 Cardiac panels</div>
-      <div class="feature-badge">🧪 Urine tests</div>
-      <div class="feature-badge">🤰 Pregnancy tests</div>
-      <div class="feature-badge">🧬 Genetic results</div>
-      <div class="feature-badge">🦠 Infection markers</div>
+      <p>Upload up to 5 pages of your lab results — we'll explain every test in plain English, then let you ask questions.</p>
     </div>
 
     <div class="card">
-      <div class="drop-zone" id="dropZone">
-        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/gif,image/webp" />
-        <div class="drop-icon">📷</div>
-        <h3>Drop your lab result photo here</h3>
-        <p>or click to browse — JPEG, PNG, WebP supported (max 20MB)</p>
+      <div class="upload-btns">
+        <!-- Camera capture -->
+        <label class="upload-btn-opt">
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" />
+          <div class="icon">📷</div>
+          <span>Take Photo</span>
+          <small>Use your camera</small>
+        </label>
+        <!-- File picker (multiple) -->
+        <label class="upload-btn-opt">
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
+          <div class="icon">📁</div>
+          <span>Choose Files</span>
+          <small>Up to 5 images</small>
+        </label>
       </div>
 
-      <div class="preview-wrap" id="previewWrap">
-        <img id="previewImg" src="" alt="Lab result preview" />
-        <p class="preview-name" id="previewName"></p>
-      </div>
+      <!-- Thumbnails -->
+      <div class="image-grid" id="imageGrid"></div>
+      <div class="img-count" id="imgCount" style="display:none"></div>
 
       <div class="error-box" id="errorBox"></div>
 
       <button class="analyze-btn" id="analyzeBtn" disabled>
         <span class="spinner" id="spinner"></span>
-        <span id="btnText">🔍 Select an image to begin</span>
+        <span id="btnText">📋 Select images to begin</span>
       </button>
+
+      <div class="disclaimer">
+        🔒 Your images are processed securely and never stored. Results are for informational purposes only.
+      </div>
     </div>
 
-    <div class="results-card" id="resultsCard">
-      <div class="results-header">
-        <div class="status-dot" id="statusDot"></div>
-        <h2 id="resultsTitle">Analyzing your results…</h2>
+    <!-- Progress box -->
+    <div class="progress-box" id="progressBox">
+      <strong id="progressTitle">Preparing your images…</strong>
+      <div class="progress-steps">
+        <div class="step active" id="step1"><span class="step-icon">🗜️</span> Compressing images for fast upload</div>
+        <div class="step" id="step2"><span class="step-icon">📤</span> Sending to Grok Vision AI</div>
+        <div class="step" id="step3"><span class="step-icon">🔬</span> Reading your lab report</div>
+        <div class="step" id="step4"><span class="step-icon">✍️</span> Writing plain-English explanation</div>
+        <div class="step" id="step5"><span class="step-icon">✅</span> Done — opening your results</div>
       </div>
-      <div id="result-body"></div>
     </div>
-  </main>
+  </div>
 
   <footer>
-    <p>MedExplain AI — Powered by Grok Vision &nbsp;|&nbsp; For informational purposes only &nbsp;|&nbsp; Not a substitute for medical advice</p>
+    <p>MedExplain AI — Powered by Grok Vision &nbsp;|&nbsp; Not a substitute for medical advice</p>
   </footer>
+</div>
 
-  <script>
-    // ── Simple markdown → HTML renderer ──
-    function renderMarkdown(text) {
-      return text
-        // Horizontal rules
-        .replace(/^---+$/gm, '<hr>')
-        // H2
-        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-        // H3
-        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-        // Bold
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        // Italic / disclaimer
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        // Blank lines → paragraph breaks
-        .replace(/\n{2,}/g, '</p><p>')
-        // Single newlines → space (within paragraphs)
-        .replace(/\n/g, ' ')
-        // Wrap in paragraph
-        .replace(/^(.+)$/, '<p>$1</p>');
-    }
+<!-- ══════════════════════════════════════
+     PAGE 2: CHAT
+══════════════════════════════════════ -->
+<div id="page-chat">
+  <div class="chat-header">
+    <div class="logo" style="width:32px;height:32px;font-size:18px;">🔬</div>
+    <div><div class="chat-title">MedExplain AI</div><div class="chat-sub" id="chatSub">Your results are ready</div></div>
+    <button onclick="goBack()">← New Scan</button>
+  </div>
 
-    const dropZone   = document.getElementById('dropZone');
-    const fileInput  = document.getElementById('fileInput');
-    const previewWrap = document.getElementById('previewWrap');
-    const previewImg = document.getElementById('previewImg');
-    const previewName = document.getElementById('previewName');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const btnText    = document.getElementById('btnText');
-    const spinner    = document.getElementById('spinner');
-    const resultsCard = document.getElementById('resultsCard');
-    const resultBody = document.getElementById('result-body');
-    const statusDot  = document.getElementById('statusDot');
-    const resultsTitle = document.getElementById('resultsTitle');
-    const errorBox   = document.getElementById('errorBox');
+  <div class="chat-messages" id="chatMessages">
+    <!-- Analysis bubble injected here -->
+  </div>
 
-    let selectedFile = null;
+  <div class="chat-input-bar">
+    <textarea id="chatInput" placeholder="Ask a question about your results…" rows="1"></textarea>
+    <button class="send-btn" id="sendBtn" title="Send">➤</button>
+  </div>
+</div>
 
-    // Drag & drop
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
-    });
+<script>
+// ════════════════════════════════════════
+// State
+// ════════════════════════════════════════
+let selectedFiles = [];          // File objects (compressed blobs)
+let analysisText  = '';          // Full analysis for chat context
+let chatHistory   = [];          // [{role,content}]
+let isChatting    = false;
 
-    fileInput.addEventListener('change', e => {
-      if (e.target.files[0]) handleFile(e.target.files[0]);
-    });
+const MAX_IMAGES  = 5;
+const MAX_DIM     = 1400;        // px — compress to this max dimension
+const JPEG_Q      = 0.78;        // compression quality
 
-    function handleFile(file) {
-      const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) {
-        showError('Please upload an image file (JPEG, PNG, GIF, or WebP).');
-        return;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        showError('Image is too large. Please use an image under 20MB.');
-        return;
-      }
-      hideError();
-      selectedFile = file;
-
-      const reader = new FileReader();
-      reader.onload = e => {
-        previewImg.src = e.target.result;
-        previewName.textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
-        previewWrap.classList.add('visible');
+// ════════════════════════════════════════
+// Image compression (Canvas)
+// ════════════════════════════════════════
+function compressImage(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+          else       { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', JPEG_Q);
       };
-      reader.readAsDataURL(file);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-      analyzeBtn.disabled = false;
-      btnText.textContent = '🔍 Analyze My Lab Results';
+// ════════════════════════════════════════
+// File handling
+// ════════════════════════════════════════
+document.getElementById('cameraInput').addEventListener('change', e => handleNewFiles(e.target.files));
+document.getElementById('fileInput').addEventListener('change', e => handleNewFiles(e.target.files));
+
+async function handleNewFiles(fileList) {
+  hideError();
+  const incoming = Array.from(fileList);
+  const remaining = MAX_IMAGES - selectedFiles.length;
+  if (remaining <= 0) { showError(`Maximum ${MAX_IMAGES} images already selected.`); return; }
+
+  for (const f of incoming.slice(0, remaining)) {
+    if (!['image/jpeg','image/png','image/webp','image/gif'].includes(f.type)) {
+      showError('Only JPEG, PNG, WebP or GIF images are supported.'); continue;
+    }
+    selectedFiles.push(f);
+  }
+  if (incoming.length > remaining) {
+    showError(`Only ${remaining} more image(s) could be added (max ${MAX_IMAGES}).`);
+  }
+  renderThumbs();
+}
+
+function renderThumbs() {
+  const grid = document.getElementById('imageGrid');
+  grid.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const div = document.createElement('div');
+    div.className = 'img-thumb';
+    div.innerHTML = `<img src="${url}" alt="page ${i+1}">
+      <button class="remove-btn" onclick="removeImage(${i})">×</button>`;
+    grid.appendChild(div);
+  });
+  const count = document.getElementById('imgCount');
+  if (selectedFiles.length > 0) {
+    count.textContent = `${selectedFiles.length} of ${MAX_IMAGES} image${selectedFiles.length>1?'s':''} selected`;
+    count.style.display = 'block';
+  } else {
+    count.style.display = 'none';
+  }
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = selectedFiles.length === 0;
+  document.getElementById('btnText').textContent =
+    selectedFiles.length === 0 ? '📋 Select images to begin' :
+    `🔍 Analyze ${selectedFiles.length} Page${selectedFiles.length>1?'s':''}`;
+}
+
+function removeImage(i) {
+  selectedFiles.splice(i, 1);
+  renderThumbs();
+}
+
+// ════════════════════════════════════════
+// Analyze
+// ════════════════════════════════════════
+document.getElementById('analyzeBtn').addEventListener('click', analyze);
+
+async function analyze() {
+  if (selectedFiles.length === 0) return;
+
+  // UI loading
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('btnText').textContent = 'Analyzing…';
+  hideError();
+  setStep(1);
+  document.getElementById('progressBox').classList.add('visible');
+  document.getElementById('progressTitle').textContent = 'Compressing images…';
+
+  try {
+    // Step 1: Compress all images
+    const compressed = await Promise.all(selectedFiles.map(compressImage));
+    setStep(2);
+    document.getElementById('progressTitle').textContent = `Sending ${compressed.length} image(s) to Grok…`;
+
+    // Build FormData
+    const form = new FormData();
+    compressed.forEach((blob, i) => form.append('labImages', blob, `page${i+1}.jpg`));
+
+    // Step 2→3: Fetch with SSE
+    setStep(3);
+    document.getElementById('progressTitle').textContent = 'Reading your lab report…';
+
+    const resp = await fetch('/api/analyze', { method: 'POST', body: form });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'Server error');
     }
 
-    function showError(msg) {
-      errorBox.textContent = '⚠️ ' + msg;
-      errorBox.classList.add('visible');
-    }
-    function hideError() {
-      errorBox.classList.remove('visible');
-    }
+    // Step 4: Stream
+    setStep(4);
+    document.getElementById('progressTitle').textContent = 'Writing plain-English explanation…';
 
-    analyzeBtn.addEventListener('click', async () => {
-      if (!selectedFile) return;
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    analysisText = '';
 
-      // UI: loading state
-      analyzeBtn.disabled = true;
-      spinner.style.display = 'block';
-      btnText.textContent = 'Analyzing…';
-      hideError();
-
-      resultsCard.classList.add('visible');
-      resultsTitle.textContent = 'Analyzing your results…';
-      statusDot.classList.remove('done');
-      resultBody.innerHTML = '<p style="color:#9ca3af">Reading your lab report… this usually takes 10–20 seconds.</p>';
-
-      // Build form data
-      const formData = new FormData();
-      formData.append('labImage', selectedFile);
-
-      try {
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || 'Server error. Please try again.');
-        }
-
-        // Stream SSE
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-        resultBody.innerHTML = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.done) {
-                  // Finished
-                  statusDot.classList.add('done');
-                  resultsTitle.textContent = 'Results Explained ✓';
-                } else if (data.text) {
-                  fullText += data.text;
-                  resultBody.innerHTML = renderMarkdown(fullText);
-                  // Scroll results into view smoothly
-                  resultBody.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
-              } catch {}
-            }
-          }
-        }
-
-      } catch (err) {
-        showError(err.message || 'Something went wrong. Please try again.');
-        resultsCard.classList.remove('visible');
-      } finally {
-        analyzeBtn.disabled = false;
-        spinner.style.display = 'none';
-        btnText.textContent = '🔍 Analyze Again';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.error) throw new Error(data.error);
+          if (data.text) analysisText += data.text;
+          if (data.done) break;
+        } catch(e) { if (e.message !== 'Unexpected end') throw e; }
       }
+    }
+
+    if (!analysisText) throw new Error('No response received. Please try again.');
+
+    // Step 5: Open chat
+    setStep(5);
+    document.getElementById('progressTitle').textContent = 'Done! Opening your results…';
+    await new Promise(r => setTimeout(r, 600));
+    openChat();
+
+  } catch (err) {
+    showError(err.message || 'Something went wrong. Please try again.');
+    document.getElementById('progressBox').classList.remove('visible');
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btnText').textContent =
+      `🔍 Analyze ${selectedFiles.length} Page${selectedFiles.length>1?'s':''}`;
+  }
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < n) el.querySelector('.step-icon').textContent = '✅';
+  }
+}
+
+// ════════════════════════════════════════
+// Open Chat
+// ════════════════════════════════════════
+function openChat() {
+  document.getElementById('page-upload').style.display = 'none';
+  const chatPage = document.getElementById('page-chat');
+  chatPage.classList.add('active');
+
+  const msgArea = document.getElementById('chatMessages');
+  msgArea.innerHTML = '';
+  chatHistory = [];
+
+  // Analysis bubble
+  const bubble = document.createElement('div');
+  bubble.className = 'analysis-bubble';
+  bubble.innerHTML = `<h4>🔬 Your Lab Results — ${selectedFiles.length} Page${selectedFiles.length>1?'s':''} Analyzed</h4>
+    <div class="analysis-content" id="analysisContent">${renderMarkdown(analysisText)}</div>`;
+  msgArea.appendChild(bubble);
+
+  // Greeting from AI
+  addAiMessage(`Hi! I've finished reading your lab results above. 😊\n\nFeel free to ask me anything — like *"What does HCV negative mean?"* or *"Is my blood count normal?"*\n\nI'm here to help you understand. For medical decisions, I'll always point you to your doctor.`);
+
+  document.getElementById('chatSub').textContent = `${selectedFiles.length} page${selectedFiles.length>1?'s':''} analyzed`;
+  document.getElementById('chatInput').focus();
+  msgArea.scrollTop = msgArea.scrollHeight;
+}
+
+function goBack() {
+  document.getElementById('page-chat').classList.remove('active');
+  document.getElementById('page-upload').style.display = 'block';
+  document.getElementById('progressBox').classList.remove('visible');
+  // Reset steps
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.className = 'step' + (i === 1 ? ' active' : '');
+    el.querySelector('.step-icon').textContent =
+      ['🗜️','📤','🔬','✍️','✅'][i-1];
+  }
+}
+
+// ════════════════════════════════════════
+// Chat
+// ════════════════════════════════════════
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('chatInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+function addUserMessage(text) {
+  const msgArea = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="msg-label">You</div><div class="msg-bubble">${escHtml(text)}</div>`;
+  msgArea.appendChild(div);
+  msgArea.scrollTop = msgArea.scrollHeight;
+}
+
+function addAiMessage(text) {
+  const msgArea = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `<div class="msg-label">MedExplain AI</div><div class="msg-bubble">${renderMarkdown(text)}</div>`;
+  msgArea.appendChild(div);
+  msgArea.scrollTop = msgArea.scrollHeight;
+  return div.querySelector('.msg-bubble');
+}
+
+function addTyping() {
+  const msgArea = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'typing'; div.id = 'typingDots';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  msgArea.appendChild(div);
+  msgArea.scrollTop = msgArea.scrollHeight;
+}
+function removeTyping() {
+  const t = document.getElementById('typingDots');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  if (isChatting) return;
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  isChatting = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  addUserMessage(text);
+  chatHistory.push({ role: 'user', content: text });
+
+  addTyping();
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory, analysisContext: analysisText }),
     });
-  </script>
+
+    if (!resp.ok) throw new Error('Server error');
+
+    removeTyping();
+    let aiText = '';
+    const bubble = addAiMessage('');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.error) throw new Error(data.error);
+          if (data.text) {
+            aiText += data.text;
+            bubble.innerHTML = renderMarkdown(aiText);
+            document.getElementById('chatMessages').scrollTop = 999999;
+          }
+        } catch(e) { /* ignore parse errors */ }
+      }
+    }
+
+    chatHistory.push({ role: 'assistant', content: aiText });
+
+    // Show doctor banner if AI mentioned doctor
+    if (/doctor|physician|healthcare|medical (advice|professional)/i.test(aiText)) {
+      const msgArea = document.getElementById('chatMessages');
+      const banner = document.createElement('div');
+      banner.className = 'doctor-banner';
+      banner.innerHTML = `<span>👨‍⚕️</span><span>For the best care, please discuss these results with your doctor or a qualified healthcare professional.</span>`;
+      msgArea.appendChild(banner);
+      msgArea.scrollTop = 999999;
+    }
+
+  } catch(err) {
+    removeTyping();
+    addAiMessage(`Sorry, I couldn't get a response right now. Please try again. (${err.message})`);
+  } finally {
+    isChatting = false;
+    document.getElementById('sendBtn').disabled = false;
+    input.focus();
+  }
+}
+
+// ════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════
+function renderMarkdown(t) {
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^---+$/gm,'<hr>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\n{2,}/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(?!<[h|p|h])(.+)/,'<p>$1</p>');
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function showError(msg) {
+  const b = document.getElementById('errorBox');
+  b.textContent = '⚠️ ' + msg;
+  b.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('visible');
+}
+</script>
 </body>
 </html>
