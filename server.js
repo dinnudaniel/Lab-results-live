@@ -1,16 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
-const Anthropic = require("@anthropic-ai/sdk");
+const OpenAI = require("openai");
 const path = require("path");
-const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// xAI Grok uses an OpenAI-compatible API — lazy init so missing key only fails at request time
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.XAI_API_KEY || "missing",
+    baseURL: "https://api.x.ai/v1",
+  });
+}
+
+const GROK_MODEL = "grok-2-vision-1212";
 
 // Store image in memory (no disk writes needed)
 const upload = multer({
@@ -71,23 +76,27 @@ app.post("/api/analyze", upload.single("labImage"), async (req, res) => {
 
   const imageBase64 = req.file.buffer.toString("base64");
   const mediaType = req.file.mimetype;
+  const imageUrl = `data:${mediaType};base64,${imageBase64}`;
+
+  // Set up SSE headers before streaming
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-6",
+    const stream = await getClient().chat.completions.create({
+      model: GROK_MODEL,
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      stream: true,
       messages: [
+        { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
           content: [
             {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: imageBase64,
-              },
+              type: "image_url",
+              image_url: { url: imageUrl },
             },
             {
               type: "text",
@@ -98,37 +107,28 @@ app.post("/api/analyze", upload.single("labImage"), async (req, res) => {
       ],
     });
 
-    // Stream the response back to the client using Server-Sent Events
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    for await (const event of stream) {
-      if (
-        event.type === "content_block_delta" &&
-        event.delta.type === "text_delta"
-      ) {
-        res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content;
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    console.error("Claude API error:", err);
+    console.error("Grok API error:", err);
 
-    if (err instanceof Anthropic.AuthenticationError) {
-      return res.status(401).json({ error: "Invalid API key. Please check your ANTHROPIC_API_KEY." });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
-    }
-    if (err instanceof Anthropic.BadRequestError) {
-      return res.status(400).json({ error: "Could not process the image. Please try a clearer photo." });
-    }
+    const status = err.status || 500;
+    const messages = {
+      401: "Invalid API key. Please check your XAI_API_KEY in the .env file.",
+      429: "Too many requests. Please wait a moment and try again.",
+      400: "Could not process the image. Please try a clearer photo.",
+    };
 
-    res.status(500).json({ error: "Something went wrong. Please try again." });
+    const errorMsg = messages[status] || "Something went wrong. Please try again.";
+    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.end();
   }
 });
 
@@ -136,14 +136,14 @@ app.post("/api/analyze", upload.single("labImage"), async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    model: "claude-opus-4-6",
-    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+    model: GROK_MODEL,
+    hasApiKey: !!process.env.XAI_API_KEY && process.env.XAI_API_KEY !== "missing",
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`\n✅ Lab Results Interpreter running at http://localhost:${PORT}`);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("⚠️  Warning: ANTHROPIC_API_KEY is not set. Add it to your .env file.");
+  console.log(`\n✅ Lab Results Interpreter (Grok) running at http://localhost:${PORT}`);
+  if (!process.env.XAI_API_KEY) {
+    console.warn("⚠️  Warning: XAI_API_KEY is not set. Add it to your .env file.");
   }
 });
