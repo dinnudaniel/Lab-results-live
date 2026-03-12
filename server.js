@@ -14,8 +14,8 @@ function getClient() {
   });
 }
 
-const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
-const CHAT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const VISION_MODEL = "qwen/qwen2.5-vl-7b-instruct:free";
+const CHAT_MODEL = "qwen/qwen2.5-72b-instruct:free";
 
 const upload = multer({
   storage: multer.memoryStorage(),
