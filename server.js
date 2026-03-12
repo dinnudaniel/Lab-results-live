@@ -3,12 +3,24 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const sharp = require("sharp");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "missing");
 const MODEL = "gemini-2.0-flash";
+
+async function resizeImage(buffer, mimetype) {
+  try {
+    return await sharp(buffer)
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+  } catch {
+    return buffer; // fallback to original if resize fails
+  }
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -80,10 +92,11 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   try {
     const model = genAI.getGenerativeModel({ model: MODEL });
 
-    const parts = files.map(file => ({
+    const resized = await Promise.all(files.map(f => resizeImage(f.buffer, f.mimetype)));
+    const parts = resized.map(buf => ({
       inlineData: {
-        data: file.buffer.toString("base64"),
-        mimeType: file.mimetype,
+        data: buf.toString("base64"),
+        mimeType: "image/jpeg",
       },
     }));
     parts.push({ text: ANALYZE_PROMPT });
