@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedExplain AI — Lab Results in Plain English</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand: #2563eb;
+      --brand-dark: #1d4ed8;
+      --brand-light: #eff6ff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: var(--brand);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    header p {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 32px 16px 64px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .hero h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    .hero h2 span { color: var(--brand); }
+    .hero p {
+      font-size: 1rem;
+      color: var(--gray-600);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── Features strip ── */
+    .features {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .feature-badge {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 0.82rem;
+      color: var(--gray-700);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Upload card ── */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--gray-200);
+      border-radius: 10px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--brand);
+      background: var(--brand-light);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+    .drop-zone h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: 6px;
+    }
+    .drop-zone p {
+      font-size: 0.85rem;
+      color: var(--gray-400);
+    }
+
+    /* ── Preview ── */
+    .preview-wrap {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+    }
+    .preview-wrap.visible { display: block; }
+    .preview-wrap img {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      object-fit: contain;
+    }
+    .preview-name {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+      margin-top: 6px;
+    }
+
+    /* ── Button ── */
+    .analyze-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--brand);
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .analyze-btn:hover { background: var(--brand-dark); }
+    .analyze-btn:active { transform: scale(0.99); }
+    .analyze-btn:disabled {
+      background: var(--gray-400);
+      cursor: not-allowed;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    .results-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 32px;
+      display: none;
+    }
+    .results-card.visible { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .results-header h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .status-dot.done { animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Markdown-rendered output ── */
+    #result-body {
+      font-size: 0.95rem;
+      color: var(--gray-700);
+      line-height: 1.8;
+    }
+    #result-body h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 20px 0 8px;
+    }
+    #result-body h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--brand);
+      margin: 18px 0 6px;
+      padding: 10px 14px;
+      background: var(--brand-light);
+      border-left: 3px solid var(--brand);
+      border-radius: 0 6px 6px 0;
+    }
+    #result-body p { margin-bottom: 10px; }
+    #result-body strong { color: var(--gray-900); }
+    #result-body em { color: var(--gray-600); font-style: normal; font-size: 0.88rem; }
+    #result-body hr {
+      border: none;
+      border-top: 1px solid var(--gray-200);
+      margin: 20px 0;
+    }
+    #result-body blockquote, #result-body em:last-child {
+      display: block;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #92400e;
+      font-size: 0.85rem;
+      margin-top: 16px;
+    }
+
+    /* ── Disclaimer ── */
+    .disclaimer {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 0.83rem;
+      color: #92400e;
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Error ── */
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: var(--danger);
+      font-size: 0.9rem;
+      display: none;
+      margin-top: 16px;
+    }
+    .error-box.visible { display: block; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--gray-400);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--gray-200);
+    }
+
+    @media (max-width: 480px) {
+      .hero h2 { font-size: 1.5rem; }
+      .card { padding: 20px; }
+      .drop-zone { padding: 32px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">🔬</div>
+    <div>
+      <h1>MedExplain AI</h1>
+      <p>Lab results in plain English</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h2>Understand Your <span>Lab Results</span></h2>
+      <p>Take a photo of your medical test results and get a clear, plain-English explanation — no medical degree required.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature-badge">🩸 Blood tests</div>
+      <div class="feature-badge">🫀 Cardiac panels</div>
+      <div class="feature-badge">🧪 Urine tests</div>
+      <div class="feature-badge">🤰 Pregnancy tests</div>
+      <div class="feature-badge">🧬 Genetic results</div>
+      <div class="feature-badge">🦠 Infection markers</div>
+    </div>
+
+    <div class="card">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/gif,image/webp" />
+        <div class="drop-icon">📷</div>
+        <h3>Drop your lab result photo here</h3>
+        <p>or click to browse — JPEG, PNG, WebP supported (max 20MB)</p>
+      </div>
+
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" src="" alt="Lab result preview" />
+        <p class="preview-name" id="previewName"></p>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <button class="analyze-btn" id="analyzeBtn" disabled>
+        <span class="spinner" id="spinner"></span>
+        <span id="btnText">🔍 Select an image to begin</span>
+      </button>
+    </div>
+
+    <div class="results-card" id="resultsCard">
+      <div class="results-header">
+        <div class="status-dot" id="statusDot"></div>
+        <h2 id="resultsTitle">Analyzing your results…</h2>
+      </div>
+      <div id="result-body"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>MedExplain AI — Powered by Claude claude-opus-4-6 &nbsp;|&nbsp; For informational purposes only &nbsp;|&nbsp; Not a substitute for medical advice</p>
+  </footer>
+
+  <script>
+    // ── Simple markdown → HTML renderer ──
+    function renderMarkdown(text) {
+      return text
+        // Horizontal rules
+        .replace(/^---+$/gm, '<hr>')
+        // H2
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        // H3
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        // Bold
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Italic / disclaimer
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Blank lines → paragraph breaks
+        .replace(/\n{2,}/g, '</p><p>')
+        // Single newlines → space (within paragraphs)
+        .replace(/\n/g, ' ')
+        // Wrap in paragraph
+        .replace(/^(.+)$/, '<p>$1</p>');
+    }
+
+    const dropZone   = document.getElementById('dropZone');
+    const fileInput  = document.getElementById('fileInput');
+    const previewWrap = document.getElementById('previewWrap');
+    const previewImg = document.getElementById('previewImg');
+    const previewName = document.getElementById('previewName');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const btnText    = document.getElementById('btnText');
+    const spinner    = document.getElementById('spinner');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultBody = document.getElementById('result-body');
+    const statusDot  = document.getElementById('statusDot');
+    const resultsTitle = document.getElementById('resultsTitle');
+    const errorBox   = document.getElementById('errorBox');
+
+    let selectedFile = null;
+
+    // Drag & drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        showError('Please upload an image file (JPEG, PNG, GIF, or WebP).');
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        showError('Image is too large. Please use an image under 20MB.');
+        return;
+      }
+      hideError();
+      selectedFile = file;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        previewImg.src = e.target.result;
+        previewName.textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+        previewWrap.classList.add('visible');
+      };
+      reader.readAsDataURL(file);
+
+      analyzeBtn.disabled = false;
+      btnText.textContent = '🔍 Analyze My Lab Results';
+    }
+
+    function showError(msg) {
+      errorBox.textContent = '⚠️ ' + msg;
+      errorBox.classList.add('visible');
+    }
+    function hideError() {
+      errorBox.classList.remove('visible');
+    }
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      // UI: loading state
+      analyzeBtn.disabled = true;
+      spinner.style.display = 'block';
+      btnText.textContent = 'Analyzing…';
+      hideError();
+
+      resultsCard.classList.add('visible');
+      resultsTitle.textContent = 'Analyzing your results…';
+      statusDot.classList.remove('done');
+      resultBody.innerHTML = '<p style="color:#9ca3af">Reading your lab report… this usually takes 10–20 seconds.</p>';
+
+      // Build form data
+      const formData = new FormData();
+      formData.append('labImage', selectedFile);
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Server error. Please try again.');
+        }
+
+        // Stream SSE
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        resultBody.innerHTML = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.done) {
+                  // Finished
+                  statusDot.classList.add('done');
+                  resultsTitle.textContent = 'Results Explained ✓';
+                } else if (data.text) {
+                  fullText += data.text;
+                  resultBody.innerHTML = renderMarkdown(fullText);
+                  // Scroll results into view smoothly
+                  resultBody.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              } catch {}
+            }
+          }
+        }
+
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+        resultsCard.classList.remove('visible');
+      } finally {
+        analyzeBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = '🔍 Analyze Again';
+      }
+    });
+  </script>
+</body>
+</html>
