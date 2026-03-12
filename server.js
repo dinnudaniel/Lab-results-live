@@ -54,7 +54,7 @@ Your job:
 RULES:
 - HCV = Hepatitis C Virus (NOT AIDS). HIV = Human Immunodeficiency Virus. Never mix these up.
 - If a result is outside range, explain simply but say a doctor should review it
-- If you cannot read a value, say so
+- ONLY include tests where the result value is clearly visible in the image — skip any test you cannot read or that has no result shown
 - End with a reminder to consult a doctor
 
 FORMAT:
