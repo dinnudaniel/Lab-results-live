@@ -4,6 +4,9 @@ const multer = require("multer");
 const path = require("path");
 const OpenAI = require("openai");
 const sharp = require("sharp");
+const fs = require("fs");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +44,38 @@ async function resizeImage(buffer) {
   }
 }
 
+// ── User Store ──
+const DATA_DIR = path.join(__dirname, "data");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+
+function loadUsers() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(USERS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+  } catch { return []; }
+}
+
+function saveUsers(users) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function authMiddleware(req, res, next) {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  const users = loadUsers();
+  const user = users.find(u => u.token === token);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  req.user = user;
+  next();
+}
+
+// ── AI Prompts ──
 const ANALYZE_SYSTEM = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
 
 Your job:
@@ -85,7 +120,154 @@ RULES:
 - Never guess at a diagnosis
 - Keep answers focused and concise`;
 
-// ── Analyze: accepts up to 5 images ──
+// ── Register ──
+app.post("/api/register", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password)
+      return res.status(400).json({ error: "All fields are required." });
+    if (username.trim().length < 2)
+      return res.status(400).json({ error: "Username must be at least 2 characters." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    if (password.length < 6)
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+
+    const users = loadUsers();
+    if (users.find(u => u.email === email.toLowerCase().trim()))
+      return res.status(409).json({ error: "This email is already registered. Please login." });
+
+    const hash = await bcrypt.hash(password, 10);
+    const token = generateToken();
+    const user = {
+      id: Date.now().toString(),
+      username: username.trim(),
+      email: email.toLowerCase().trim(),
+      password: hash,
+      token,
+      telegramBotToken: "",
+      telegramChatId: "",
+    };
+    users.push(user);
+    saveUsers(users);
+
+    res.json({ token, username: user.username, email: user.email, hasTelegram: false });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(500).json({ error: "Registration failed. Please try again." });
+  }
+});
+
+// ── Login ──
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password are required." });
+
+    const users = loadUsers();
+    const user = users.find(u => u.email === email.toLowerCase().trim());
+    if (!user) return res.status(401).json({ error: "Invalid email or password." });
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: "Invalid email or password." });
+
+    user.token = generateToken();
+    saveUsers(users);
+
+    res.json({
+      token: user.token,
+      username: user.username,
+      email: user.email,
+      hasTelegram: !!(user.telegramBotToken && user.telegramChatId),
+      telegramChatId: user.telegramChatId,
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Login failed. Please try again." });
+  }
+});
+
+// ── Telegram Settings ──
+app.post("/api/user/telegram", authMiddleware, (req, res) => {
+  try {
+    const { telegramBotToken, telegramChatId } = req.body;
+    if (!telegramBotToken || !telegramChatId)
+      return res.status(400).json({ error: "Both Bot Token and Chat ID are required." });
+
+    const users = loadUsers();
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    user.telegramBotToken = telegramBotToken.trim();
+    user.telegramChatId = telegramChatId.trim();
+    saveUsers(users);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save settings." });
+  }
+});
+
+app.get("/api/user/telegram", authMiddleware, (req, res) => {
+  res.json({
+    hasTelegram: !!(req.user.telegramBotToken && req.user.telegramChatId),
+    telegramChatId: req.user.telegramChatId || "",
+  });
+});
+
+// ── Telegram Send ──
+app.post("/api/telegram/send", authMiddleware, async (req, res) => {
+  try {
+    const { message, telegramBotToken, telegramChatId } = req.body;
+
+    const users = loadUsers();
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    if (telegramBotToken) user.telegramBotToken = telegramBotToken.trim();
+    if (telegramChatId) user.telegramChatId = telegramChatId.trim();
+    if (telegramBotToken || telegramChatId) saveUsers(users);
+
+    const botToken = user.telegramBotToken;
+    const chatId = user.telegramChatId;
+
+    if (!botToken || !chatId)
+      return res.status(400).json({ error: "Telegram Bot Token and Chat ID are required." });
+    if (!message)
+      return res.status(400).json({ error: "No message to send." });
+
+    const header = `🔬 MedExplain AI — Your Lab Results\n${"─".repeat(35)}\n\n`;
+    const fullMsg = header + message;
+    const MAX_LEN = 4000;
+    const chunks = [];
+    for (let i = 0; i < fullMsg.length; i += MAX_LEN) {
+      chunks.push(fullMsg.slice(i, i + MAX_LEN));
+    }
+
+    for (const chunk of chunks) {
+      const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: chunk }),
+      });
+      const result = await tgRes.json();
+      if (!result.ok) {
+        const desc = result.description || "Telegram API error";
+        return res.status(400).json({
+          error: desc.includes("bot was blocked") ? "Bot was blocked by the user. Send a message to your bot first." :
+                 desc.includes("chat not found") ? "Chat ID not found. Make sure you've started a conversation with your bot." :
+                 desc.includes("Unauthorized") ? "Invalid Bot Token." : desc,
+        });
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Telegram send error:", err);
+    res.status(500).json({ error: "Failed to send to Telegram. Please try again." });
+  }
+});
+
+// ── Analyze ──
 app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   const files = req.files;
   if (!files || files.length === 0) {
@@ -143,7 +325,7 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   }
 });
 
-// ── Chat: follow-up questions after analysis ──
+// ── Chat ──
 app.post("/api/chat", async (req, res) => {
   const { messages, analysisContext } = req.body;
 

@@ -18,6 +18,11 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
 
+    /* ── Pages ── */
+    #page-auth   { display: block; }
+    #page-upload { display: none; }
+    #page-chat   { display: none; }
+
     /* ── Header ── */
     header { background: white; border-bottom: 1px solid var(--gray-200);
       padding: 14px 20px; display: flex; align-items: center; gap: 12px;
@@ -26,10 +31,53 @@
       display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
     header h1 { font-size: 1.15rem; font-weight: 700; }
     header p { font-size: 0.78rem; color: var(--gray-600); }
+    .header-user { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .header-user span { font-size: 0.82rem; color: var(--gray-600); }
+    .header-user button { background: none; border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 5px 10px; font-size: 0.78rem; cursor: pointer; color: var(--gray-700); }
+    .header-user button:hover { background: var(--gray-100); }
 
-    /* ── Page sections ── */
-    #page-upload { display: block; }
-    #page-chat   { display: none; }
+    /* ── Auth Page ── */
+    .auth-wrap { max-width: 420px; margin: 0 auto; padding: 40px 16px 80px; }
+    .auth-hero { text-align: center; margin-bottom: 28px; }
+    .auth-hero .auth-logo { width: 64px; height: 64px; background: var(--brand); border-radius: 18px;
+      display: flex; align-items: center; justify-content: center; font-size: 32px;
+      margin: 0 auto 16px; }
+    .auth-hero h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+    .auth-hero h2 span { color: var(--brand); }
+    .auth-hero p { color: var(--gray-600); font-size: 0.9rem; }
+
+    .auth-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
+    .auth-tab { flex: 1; padding: 14px; font-size: 0.92rem; font-weight: 600; text-align: center;
+      cursor: pointer; border: none; background: none; color: var(--gray-400);
+      border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+    .auth-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+    .auth-form { padding: 24px; display: none; }
+    .auth-form.active { display: block; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600;
+      color: var(--gray-700); margin-bottom: 6px; }
+    .form-group input { width: 100%; padding: 11px 14px; border: 1px solid var(--gray-200);
+      border-radius: 10px; font-size: 0.92rem; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: var(--brand); }
+
+    .auth-btn { width: 100%; padding: 13px; background: var(--brand); color: white;
+      font-size: 0.95rem; font-weight: 700; border: none; border-radius: 10px; cursor: pointer;
+      transition: background 0.2s; margin-top: 4px; }
+    .auth-btn:hover:not(:disabled) { background: var(--brand-dark); }
+    .auth-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
+
+    .auth-error { background: var(--red-light); border: 1px solid #fca5a5; border-radius: 8px;
+      padding: 10px 14px; color: var(--red); font-size: 0.85rem; margin-top: 12px; display: none; }
+    .auth-error.visible { display: block; }
+
+    .auth-guest { text-align: center; padding: 16px; border-top: 1px solid var(--gray-100); }
+    .auth-guest a { color: var(--gray-400); font-size: 0.82rem; cursor: pointer; text-decoration: underline; }
+    .auth-guest a:hover { color: var(--gray-600); }
 
     /* ── Upload page ── */
     .upload-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 80px; }
@@ -40,7 +88,6 @@
 
     .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 16px; }
 
-    /* Upload buttons */
     .upload-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
     .upload-btn-opt { display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 6px; padding: 20px 12px; border: 2px dashed var(--gray-200); border-radius: 10px;
@@ -51,28 +98,23 @@
     .upload-btn-opt span { font-size: 0.85rem; font-weight: 600; color: var(--gray-700); text-align: center; }
     .upload-btn-opt small { font-size: 0.72rem; color: var(--gray-400); }
 
-    /* Image grid */
     .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 16px; }
     .img-thumb { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: var(--gray-100); }
     .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .img-thumb .remove-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
       background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%;
-      font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-      line-height: 1; }
+      font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
     .img-count { font-size: 0.8rem; color: var(--gray-600); text-align: center; margin-bottom: 12px; }
 
-    /* Analyze button */
     .analyze-btn { width: 100%; padding: 15px; background: var(--brand); color: white;
       font-size: 1rem; font-weight: 700; border: none; border-radius: 10px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: background 0.2s; }
+      display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s; }
     .analyze-btn:hover:not(:disabled) { background: var(--brand-dark); }
     .analyze-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
     .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
       border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Progress */
     .progress-box { background: white; border-radius: var(--radius); box-shadow: var(--shadow);
       padding: 20px; text-align: center; display: none; }
     .progress-box.visible { display: block; }
@@ -88,16 +130,17 @@
 
     .chat-header { background: white; border-bottom: 1px solid var(--gray-200);
       padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-    .chat-header button { margin-left: auto; background: none; border: 1px solid var(--gray-200);
+    .chat-header-actions { margin-left: auto; display: flex; gap: 8px; }
+    .chat-header-btn { background: none; border: 1px solid var(--gray-200);
       border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; cursor: pointer; color: var(--gray-700); }
-    .chat-header button:hover { background: var(--gray-100); }
+    .chat-header-btn:hover { background: var(--gray-100); }
+    .chat-header-btn.tg-btn { background: #0088cc; color: white; border-color: #0088cc; }
+    .chat-header-btn.tg-btn:hover { background: #006699; }
     .chat-title { font-weight: 700; font-size: 1rem; }
     .chat-sub { font-size: 0.75rem; color: var(--gray-600); }
 
-    /* Chat messages area */
     .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
-    /* Analysis result bubble */
     .analysis-bubble { background: white; border-radius: var(--radius); box-shadow: var(--shadow);
       padding: 20px; border-left: 4px solid var(--brand); }
     .analysis-bubble h4 { font-size: 0.8rem; color: var(--brand); font-weight: 700;
@@ -112,34 +155,28 @@
     .analysis-content hr { border: none; border-top: 1px solid var(--gray-200); margin: 14px 0; }
     .analysis-content em { font-style: normal; font-size: 0.83rem; color: var(--amber); }
 
-    /* Chat message bubbles */
     .msg { display: flex; flex-direction: column; max-width: 85%; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .msg.ai { align-self: flex-start; align-items: flex-start; }
     .msg-bubble { padding: 12px 16px; border-radius: 14px; font-size: 0.92rem; line-height: 1.6; }
     .msg.user .msg-bubble { background: var(--brand); color: white; border-bottom-right-radius: 4px; }
-    .msg.ai .msg-bubble { background: white; color: var(--gray-900); box-shadow: var(--shadow);
-      border-bottom-left-radius: 4px; }
+    .msg.ai .msg-bubble { background: white; color: var(--gray-900); box-shadow: var(--shadow); border-bottom-left-radius: 4px; }
     .msg-bubble strong { font-weight: 700; }
     .msg-bubble em { font-style: italic; }
     .msg-label { font-size: 0.72rem; color: var(--gray-400); margin-bottom: 4px; padding: 0 4px; }
 
-    /* Doctor banner */
     .doctor-banner { background: var(--amber-light); border: 1px solid #fcd34d;
       border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; color: #92400e;
       display: flex; gap: 10px; align-items: flex-start; }
 
-    /* Typing indicator */
     .typing { display: flex; gap: 4px; padding: 14px 18px; background: white;
-      border-radius: 14px; border-bottom-left-radius: 4px; box-shadow: var(--shadow);
-      align-self: flex-start; }
+      border-radius: 14px; border-bottom-left-radius: 4px; box-shadow: var(--shadow); align-self: flex-start; }
     .typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-400);
       animation: bounce 1.2s ease-in-out infinite; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
 
-    /* Chat input */
     .chat-input-bar { background: white; border-top: 1px solid var(--gray-200);
       padding: 12px 16px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
     .chat-input-bar textarea { flex: 1; border: 1px solid var(--gray-200); border-radius: 10px;
@@ -152,11 +189,9 @@
     .send-btn:hover { background: var(--brand-dark); }
     .send-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
 
-    /* Disclaimer */
     .disclaimer { background: var(--amber-light); border: 1px solid #fcd34d; border-radius: 8px;
       padding: 10px 14px; font-size: 0.78rem; color: #92400e; margin-top: 8px; }
 
-    /* Error */
     .error-box { background: var(--red-light); border: 1px solid #fca5a5;
       border-radius: 8px; padding: 12px 16px; color: var(--red); font-size: 0.88rem;
       display: none; margin-top: 12px; }
@@ -165,14 +200,115 @@
     footer { text-align: center; padding: 20px; color: var(--gray-400); font-size: 0.75rem;
       border-top: 1px solid var(--gray-200); }
 
+    /* ── Telegram Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: white; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      width: 100%; max-width: 440px; overflow: hidden; }
+    .modal-header { background: #0088cc; color: white; padding: 18px 20px;
+      display: flex; align-items: center; gap: 10px; }
+    .modal-header h3 { font-size: 1rem; font-weight: 700; }
+    .modal-header .modal-close { margin-left: auto; background: none; border: none; color: white;
+      font-size: 1.4rem; cursor: pointer; line-height: 1; opacity: 0.8; }
+    .modal-header .modal-close:hover { opacity: 1; }
+    .modal-body { padding: 20px; }
+    .modal-body .help-text { font-size: 0.82rem; color: var(--gray-600); margin-bottom: 16px;
+      background: var(--brand-light); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+    .modal-body .help-text a { color: var(--brand); }
+    .modal-body .form-group { margin-bottom: 14px; }
+    .modal-body .form-group label { display: block; font-size: 0.83rem; font-weight: 600;
+      color: var(--gray-700); margin-bottom: 5px; }
+    .modal-body .form-group input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200);
+      border-radius: 9px; font-size: 0.9rem; outline: none; font-family: inherit; }
+    .modal-body .form-group input:focus { border-color: #0088cc; }
+    .modal-saved { font-size: 0.8rem; color: var(--green); margin-top: 4px; display: none; }
+    .modal-saved.visible { display: block; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--gray-100);
+      display: flex; gap: 8px; }
+    .modal-footer button { flex: 1; padding: 12px; border: none; border-radius: 9px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .modal-footer button:hover { opacity: 0.85; }
+    .btn-save { background: var(--gray-100); color: var(--gray-700); }
+    .btn-send { background: #0088cc; color: white; }
+    .btn-send:disabled { background: var(--gray-400); cursor: not-allowed; }
+    .modal-status { padding: 0 20px 14px; font-size: 0.85rem; display: none; }
+    .modal-status.success { display: block; color: var(--green); }
+    .modal-status.error { display: block; color: var(--red); }
+
+    /* ── Login required notice ── */
+    .login-notice { background: var(--brand-light); border: 1px solid #bfdbfe;
+      border-radius: 10px; padding: 14px 16px; font-size: 0.88rem; color: var(--brand-dark);
+      display: flex; gap: 10px; align-items: center; }
+    .login-notice button { margin-left: auto; background: var(--brand); color: white;
+      border: none; border-radius: 7px; padding: 6px 12px; font-size: 0.82rem;
+      cursor: pointer; white-space: nowrap; }
+
     @media (max-width: 480px) {
       .hero h2 { font-size: 1.4rem; }
       .card { padding: 16px; }
       .upload-btns { grid-template-columns: 1fr 1fr; }
+      .auth-wrap { padding: 24px 16px 60px; }
     }
   </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════
+     PAGE 0: AUTH (Login / Register)
+══════════════════════════════════════ -->
+<div id="page-auth">
+  <div class="auth-wrap">
+    <div class="auth-hero">
+      <div class="auth-logo">🔬</div>
+      <h2>Welcome to <span>MedExplain AI</span></h2>
+      <p>Create an account to save your Telegram settings and get results sent straight to your phone.</p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <div class="auth-form active" id="form-login">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="you@gmail.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="Your password" autocomplete="current-password" />
+        </div>
+        <button class="auth-btn" id="login-btn" onclick="doLogin()">Login</button>
+        <div class="auth-error" id="login-error"></div>
+      </div>
+
+      <!-- Register Form -->
+      <div class="auth-form" id="form-register">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="reg-username" placeholder="Your name" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label>Gmail / Email Address</label>
+          <input type="email" id="reg-email" placeholder="you@gmail.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="At least 6 characters" autocomplete="new-password" />
+        </div>
+        <button class="auth-btn" id="register-btn" onclick="doRegister()">Create Account</button>
+        <div class="auth-error" id="register-error"></div>
+      </div>
+
+      <div class="auth-guest">
+        <a onclick="continueAsGuest()">Continue without an account</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════
      PAGE 1: UPLOAD
@@ -181,6 +317,10 @@
   <header>
     <div class="logo">🔬</div>
     <div><h1>MedExplain AI</h1><p>Lab results in plain English</p></div>
+    <div class="header-user" id="headerUser" style="display:none">
+      <span id="headerUsername"></span>
+      <button onclick="logout()">Logout</button>
+    </div>
   </header>
 
   <div class="upload-wrap">
@@ -191,14 +331,12 @@
 
     <div class="card">
       <div class="upload-btns">
-        <!-- Camera capture -->
         <label class="upload-btn-opt">
           <input type="file" id="cameraInput" accept="image/*" capture="environment" />
           <div class="icon">📷</div>
           <span>Take Photo</span>
           <small>Use your camera</small>
         </label>
-        <!-- File picker (multiple) -->
         <label class="upload-btn-opt">
           <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <div class="icon">📁</div>
@@ -207,7 +345,6 @@
         </label>
       </div>
 
-      <!-- Thumbnails -->
       <div class="image-grid" id="imageGrid"></div>
       <div class="img-count" id="imgCount" style="display:none"></div>
 
@@ -223,7 +360,6 @@
       </div>
     </div>
 
-    <!-- Progress box -->
     <div class="progress-box" id="progressBox">
       <strong id="progressTitle">Preparing your images…</strong>
       <div class="progress-steps">
@@ -248,12 +384,13 @@
   <div class="chat-header">
     <div class="logo" style="width:32px;height:32px;font-size:18px;">🔬</div>
     <div><div class="chat-title">MedExplain AI</div><div class="chat-sub" id="chatSub">Your results are ready</div></div>
-    <button onclick="goBack()">← New Scan</button>
+    <div class="chat-header-actions">
+      <button class="chat-header-btn tg-btn" onclick="openTelegramModal()">✈️ Telegram</button>
+      <button class="chat-header-btn" onclick="goBack()">← New Scan</button>
+    </div>
   </div>
 
-  <div class="chat-messages" id="chatMessages">
-    <!-- Analysis bubble injected here -->
-  </div>
+  <div class="chat-messages" id="chatMessages"></div>
 
   <div class="chat-input-bar">
     <textarea id="chatInput" placeholder="Ask a question about your results…" rows="1"></textarea>
@@ -261,21 +398,332 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════
+     TELEGRAM MODAL
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="telegramModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:1.3rem;">✈️</span>
+      <h3>Send Results to Telegram</h3>
+      <button class="modal-close" onclick="closeTelegramModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="help-text" id="tgHelpText">
+        <strong>How to set up:</strong><br>
+        1. Search <strong>@BotFather</strong> on Telegram → create a bot → copy the Bot Token<br>
+        2. Start a chat with your bot, then get your Chat ID from <strong>@userinfobot</strong><br>
+        3. Paste both below and tap <em>Save &amp; Send</em>
+      </div>
+      <div class="form-group">
+        <label>Bot Token</label>
+        <input type="password" id="tgBotToken" placeholder="123456:ABCdef..." autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Chat ID</label>
+        <input type="text" id="tgChatId" placeholder="e.g. 123456789" autocomplete="off" />
+      </div>
+      <div class="modal-saved" id="tgSavedNote">✅ Settings saved to your account</div>
+    </div>
+    <div class="modal-status" id="tgStatus"></div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveTelegramOnly()">Save Settings</button>
+      <button class="btn-send" id="tgSendBtn" onclick="sendToTelegram()">Send Results ✈️</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     LOGIN REQUIRED MODAL (for guests)
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="loginRequiredModal">
+  <div class="modal">
+    <div class="modal-header" style="background: var(--brand);">
+      <span style="font-size:1.3rem;">🔒</span>
+      <h3>Login Required</h3>
+      <button class="modal-close" onclick="document.getElementById('loginRequiredModal').classList.remove('visible')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--gray-600);font-size:0.9rem;line-height:1.6;">
+        You need to create a free account to use the Telegram feature. Your bot token and chat ID will be saved securely to your account.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="document.getElementById('loginRequiredModal').classList.remove('visible')">Cancel</button>
+      <button class="btn-send" style="background:var(--brand);" onclick="goToLogin()">Login / Register</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════
-// State
+// Auth State
 // ════════════════════════════════════════
-let selectedFiles = [];          // File objects (compressed blobs)
-let analysisText  = '';          // Full analysis for chat context
-let chatHistory   = [];          // [{role,content}]
+let currentUser = null; // { token, username, email, hasTelegram }
+
+function saveUserToStorage(user) {
+  localStorage.setItem('medexplain_user', JSON.stringify(user));
+}
+function clearUserFromStorage() {
+  localStorage.removeItem('medexplain_user');
+}
+function loadUserFromStorage() {
+  try { return JSON.parse(localStorage.getItem('medexplain_user')); } catch { return null; }
+}
+
+// ════════════════════════════════════════
+// Auth UI
+// ════════════════════════════════════════
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+  });
+  document.getElementById('form-login').classList.toggle('active', tab === 'login');
+  document.getElementById('form-register').classList.toggle('active', tab === 'register');
+  document.getElementById('login-error').classList.remove('visible');
+  document.getElementById('register-error').classList.remove('visible');
+}
+
+function showAuthError(formId, msg) {
+  const el = document.getElementById(formId + '-error');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return showAuthError('login', 'Please fill in all fields.');
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  document.getElementById('login-error').classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError('login', err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Login';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username || !email || !password) return showAuthError('register', 'Please fill in all fields.');
+
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  document.getElementById('register-error').classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError('register', err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+}
+
+function onAuthSuccess(user) {
+  currentUser = user;
+  saveUserToStorage(user);
+  showUploadPage();
+}
+
+function continueAsGuest() {
+  currentUser = null;
+  showUploadPage();
+}
+
+function logout() {
+  currentUser = null;
+  clearUserFromStorage();
+  showPage('auth');
+}
+
+function goToLogin() {
+  document.getElementById('loginRequiredModal').classList.remove('visible');
+  goBack();
+  setTimeout(() => showPage('auth'), 100);
+}
+
+function showUploadPage() {
+  showPage('upload');
+  if (currentUser) {
+    document.getElementById('headerUser').style.display = 'flex';
+    document.getElementById('headerUsername').textContent = '👤 ' + currentUser.username;
+  } else {
+    document.getElementById('headerUser').style.display = 'none';
+  }
+}
+
+function showPage(name) {
+  document.getElementById('page-auth').style.display = name === 'auth' ? 'block' : 'none';
+  document.getElementById('page-upload').style.display = name === 'upload' ? 'block' : 'none';
+  const chatPage = document.getElementById('page-chat');
+  if (name === 'chat') { chatPage.classList.add('active'); }
+  else { chatPage.classList.remove('active'); }
+}
+
+// On page load — check for saved session
+window.addEventListener('load', () => {
+  const saved = loadUserFromStorage();
+  if (saved && saved.token) {
+    currentUser = saved;
+    showUploadPage();
+  }
+  // else stay on auth page
+});
+
+// Enter key on auth forms
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('form-login').classList.contains('active') &&
+        document.getElementById('page-auth').style.display !== 'none') doLogin();
+    else if (document.getElementById('form-register').classList.contains('active') &&
+             document.getElementById('page-auth').style.display !== 'none') doRegister();
+  }
+});
+
+// ════════════════════════════════════════
+// Telegram Modal
+// ════════════════════════════════════════
+function openTelegramModal() {
+  if (!currentUser) {
+    document.getElementById('loginRequiredModal').classList.add('visible');
+    return;
+  }
+  // Pre-fill chat ID if saved
+  if (currentUser.telegramChatId) {
+    document.getElementById('tgChatId').value = currentUser.telegramChatId;
+  }
+  if (currentUser.hasTelegram) {
+    document.getElementById('tgSavedNote').classList.add('visible');
+    document.getElementById('tgHelpText').style.display = 'none';
+    document.getElementById('tgBotToken').placeholder = '••••• (already saved, enter to update)';
+  } else {
+    document.getElementById('tgSavedNote').classList.remove('visible');
+    document.getElementById('tgHelpText').style.display = 'block';
+  }
+  setTgStatus('', '');
+  document.getElementById('telegramModal').classList.add('visible');
+}
+
+function closeTelegramModal() {
+  document.getElementById('telegramModal').classList.remove('visible');
+  setTgStatus('', '');
+}
+
+function setTgStatus(type, msg) {
+  const el = document.getElementById('tgStatus');
+  el.className = 'modal-status' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+async function saveTelegramOnly() {
+  const botToken = document.getElementById('tgBotToken').value.trim();
+  const chatId = document.getElementById('tgChatId').value.trim();
+  if (!botToken || !chatId) return setTgStatus('error', '⚠️ Please enter both Bot Token and Chat ID.');
+
+  setTgStatus('', 'Saving…');
+  try {
+    const res = await fetch('/api/user/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentUser.token },
+      body: JSON.stringify({ telegramBotToken: botToken, telegramChatId: chatId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    currentUser.hasTelegram = true;
+    currentUser.telegramChatId = chatId;
+    saveUserToStorage(currentUser);
+    document.getElementById('tgSavedNote').classList.add('visible');
+    document.getElementById('tgHelpText').style.display = 'none';
+    setTgStatus('success', '✅ Settings saved successfully!');
+  } catch (err) {
+    setTgStatus('error', '⚠️ ' + err.message);
+  }
+}
+
+async function sendToTelegram() {
+  const botToken = document.getElementById('tgBotToken').value.trim();
+  const chatId = document.getElementById('tgChatId').value.trim();
+
+  if (!currentUser.hasTelegram && (!botToken || !chatId)) {
+    return setTgStatus('error', '⚠️ Please enter your Bot Token and Chat ID first.');
+  }
+
+  const btn = document.getElementById('tgSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  setTgStatus('', '');
+
+  try {
+    // Strip markdown from analysis text for clean Telegram message
+    const cleanText = analysisText
+      .replace(/#{1,4} /g, '')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/^---+$/gm, '─────────────────')
+      .replace(/\n{3,}/g, '\n\n');
+
+    const body = { message: cleanText };
+    if (botToken) body.telegramBotToken = botToken;
+    if (chatId) body.telegramChatId = chatId;
+
+    const res = await fetch('/api/telegram/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentUser.token },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    if (botToken || chatId) {
+      currentUser.hasTelegram = true;
+      if (chatId) currentUser.telegramChatId = chatId;
+      saveUserToStorage(currentUser);
+      document.getElementById('tgSavedNote').classList.add('visible');
+    }
+    setTgStatus('success', '✅ Results sent to your Telegram!');
+    setTimeout(closeTelegramModal, 2000);
+  } catch (err) {
+    setTgStatus('error', '⚠️ ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send Results ✈️';
+  }
+}
+
+// ════════════════════════════════════════
+// App State
+// ════════════════════════════════════════
+let selectedFiles = [];
+let analysisText  = '';
+let chatHistory   = [];
 let isChatting    = false;
 
 const MAX_IMAGES  = 5;
-const MAX_DIM     = 1400;        // px — compress to this max dimension
-const JPEG_Q      = 0.78;        // compression quality
+const MAX_DIM     = 1400;
+const JPEG_Q      = 0.78;
 
 // ════════════════════════════════════════
-// Image compression (Canvas)
+// Image compression
 // ════════════════════════════════════════
 function compressImage(file) {
   return new Promise(resolve => {
@@ -361,7 +809,6 @@ document.getElementById('analyzeBtn').addEventListener('click', analyze);
 async function analyze() {
   if (selectedFiles.length === 0) return;
 
-  // UI loading
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('spinner').style.display = 'block';
   document.getElementById('btnText').textContent = 'Analyzing…';
@@ -371,16 +818,13 @@ async function analyze() {
   document.getElementById('progressTitle').textContent = 'Compressing images…';
 
   try {
-    // Step 1: Compress all images
     const compressed = await Promise.all(selectedFiles.map(compressImage));
     setStep(2);
     document.getElementById('progressTitle').textContent = `Sending ${compressed.length} image(s) to Grok…`;
 
-    // Build FormData
     const form = new FormData();
     compressed.forEach((blob, i) => form.append('labImages', blob, `page${i+1}.jpg`));
 
-    // Step 2→3: Fetch with SSE
     setStep(3);
     document.getElementById('progressTitle').textContent = 'Reading your lab report…';
 
@@ -391,7 +835,6 @@ async function analyze() {
       throw new Error(err.error || 'Server error');
     }
 
-    // Step 4: Stream
     setStep(4);
     document.getElementById('progressTitle').textContent = 'Writing plain-English explanation…';
 
@@ -416,7 +859,6 @@ async function analyze() {
 
     if (!analysisText) throw new Error('No response received. Please try again.');
 
-    // Step 5: Open chat
     setStep(5);
     document.getElementById('progressTitle').textContent = 'Done! Opening your results…';
     await new Promise(r => setTimeout(r, 600));
@@ -445,22 +887,18 @@ function setStep(n) {
 // Open Chat
 // ════════════════════════════════════════
 function openChat() {
-  document.getElementById('page-upload').style.display = 'none';
-  const chatPage = document.getElementById('page-chat');
-  chatPage.classList.add('active');
+  showPage('chat');
 
   const msgArea = document.getElementById('chatMessages');
   msgArea.innerHTML = '';
   chatHistory = [];
 
-  // Analysis bubble
   const bubble = document.createElement('div');
   bubble.className = 'analysis-bubble';
   bubble.innerHTML = `<h4>🔬 Your Lab Results — ${selectedFiles.length} Page${selectedFiles.length>1?'s':''} Analyzed</h4>
     <div class="analysis-content" id="analysisContent">${renderMarkdown(analysisText)}</div>`;
   msgArea.appendChild(bubble);
 
-  // Greeting from AI
   addAiMessage(`Hi! I've finished reading your lab results above. 😊\n\nFeel free to ask me anything — like *"What does HCV negative mean?"* or *"Is my blood count normal?"*\n\nI'm here to help you understand. For medical decisions, I'll always point you to your doctor.`);
 
   document.getElementById('chatSub').textContent = `${selectedFiles.length} page${selectedFiles.length>1?'s':''} analyzed`;
@@ -469,15 +907,12 @@ function openChat() {
 }
 
 function goBack() {
-  document.getElementById('page-chat').classList.remove('active');
-  document.getElementById('page-upload').style.display = 'block';
+  showPage('upload');
   document.getElementById('progressBox').classList.remove('visible');
-  // Reset steps
   for (let i = 1; i <= 5; i++) {
     const el = document.getElementById(`step${i}`);
     el.className = 'step' + (i === 1 ? ' active' : '');
-    el.querySelector('.step-icon').textContent =
-      ['🗜️','📤','🔬','✍️','✅'][i-1];
+    el.querySelector('.step-icon').textContent = ['🗜️','📤','🔬','✍️','✅'][i-1];
   }
 }
 
@@ -538,7 +973,6 @@ async function sendMessage() {
 
   addUserMessage(text);
   chatHistory.push({ role: 'user', content: text });
-
   addTyping();
 
   try {
@@ -577,7 +1011,6 @@ async function sendMessage() {
 
     chatHistory.push({ role: 'assistant', content: aiText });
 
-    // Show doctor banner if AI mentioned doctor
     if (/doctor|physician|healthcare|medical (advice|professional)/i.test(aiText)) {
       const msgArea = document.getElementById('chatMessages');
       const banner = document.createElement('div');
