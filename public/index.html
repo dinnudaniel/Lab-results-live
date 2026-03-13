@@ -545,7 +545,7 @@ async function doRegister() {
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 25000);
+    const timer = setTimeout(() => controller.abort(), 35000);
     let res;
     try {
       res = await fetch('/api/register', {
@@ -605,7 +605,7 @@ async function doResend() {
   link.textContent = 'Sending…';
   try {
     const ctrl2 = new AbortController();
-    const t2 = setTimeout(() => ctrl2.abort(), 25000);
+    const t2 = setTimeout(() => ctrl2.abort(), 35000);
     let res;
     try {
       res = await fetch('/api/resend-code', {
