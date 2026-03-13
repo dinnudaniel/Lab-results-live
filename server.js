@@ -76,9 +76,9 @@ function authMiddleware(req, res, next) {
 
 // ── Email (Resend API) ──
 async function sendVerificationEmail(toEmail, username, code) {
-  const fromAddress = process.env.SMTP_USER
-    ? `MedExplain AI <${process.env.SMTP_USER}>`
-    : "MedExplain AI <onboarding@resend.dev>";
+  // Use verified Resend domain sender (free plan). To use your own email,
+  // verify a custom domain at resend.com/domains and set RESEND_FROM env var.
+  const fromAddress = process.env.RESEND_FROM || "MedExplain AI <onboarding@resend.dev>";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
@@ -516,5 +516,6 @@ app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
   if (!process.env.GROQ_API_KEY) console.warn("⚠️  GROQ_API_KEY not set.");
   const resendKey = process.env.RESEND_API_KEY ? `set (starts with ${process.env.RESEND_API_KEY.slice(0,5)}...)` : "(not set ⚠️)";
-  console.log(`📧 RESEND_API_KEY: ${resendKey} | FROM: ${process.env.SMTP_USER || "onboarding@resend.dev"}`);
+  const fromAddr = process.env.RESEND_FROM || "onboarding@resend.dev";
+  console.log(`📧 RESEND_API_KEY: ${resendKey} | FROM: ${fromAddr}`);
 });
