@@ -74,69 +74,6 @@ function authMiddleware(req, res, next) {
   next();
 }
 
-// ── Email (Resend API) ──
-async function sendVerificationEmail(toEmail, username, code) {
-  if (!process.env.RESEND_API_KEY) {
-    const err = new Error("RESEND_API_KEY is not set in environment variables.");
-    err.code = "EAUTH";
-    throw err;
-  }
-
-  // Use verified Resend domain sender (free plan). To use your own email,
-  // verify a custom domain at resend.com/domains and set RESEND_FROM env var.
-  const fromAddress = process.env.RESEND_FROM || "MedExplain AI <onboarding@resend.dev>";
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
-
-  let response;
-  try {
-    response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [toEmail],
-        subject: "Your MedExplain AI Verification Code",
-        html: `
-          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;">
-            <div style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-              <div style="text-align:center;margin-bottom:24px;">
-                <div style="width:56px;height:56px;background:#2563eb;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;">🔬</div>
-                <h1 style="font-size:1.4rem;font-weight:800;color:#111827;margin:12px 0 4px;">MedExplain AI</h1>
-                <p style="color:#6b7280;font-size:0.9rem;margin:0;">Verify your email address</p>
-              </div>
-              <p style="color:#374151;font-size:0.95rem;margin-bottom:8px;">Hi <strong>${username}</strong>,</p>
-              <p style="color:#374151;font-size:0.95rem;margin-bottom:24px;">Enter this code on the website to verify your account:</p>
-              <div style="text-align:center;background:#eff6ff;border-radius:12px;padding:24px;margin-bottom:24px;">
-                <div style="font-size:2.5rem;font-weight:900;letter-spacing:0.3em;color:#2563eb;">${code}</div>
-                <p style="color:#6b7280;font-size:0.8rem;margin:8px 0 0;">This code expires in <strong>10 minutes</strong></p>
-              </div>
-              <p style="color:#9ca3af;font-size:0.8rem;text-align:center;margin:0;">If you didn't create an account, you can safely ignore this email.</p>
-            </div>
-          </div>`,
-      }),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-
-  const result = await response.json();
-  if (!response.ok) {
-    const msg = result?.message || result?.name || "Resend API error";
-    const err = new Error(msg);
-    if (response.status === 401 || response.status === 403) err.code = "EAUTH";
-    throw err;
-  }
-}
-
-// Pending verifications: email → { code, username, hashedPassword, expiresAt }
-const pendingVerifications = new Map();
-
 // ── AI Prompts ──
 const ANALYZE_SYSTEM = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
 
@@ -181,127 +118,6 @@ RULES:
 - For questions you're not confident about: say "That's a great question for your doctor — I'd recommend asking them directly"
 - Never guess at a diagnosis
 - Keep answers focused and concise`;
-
-// ── Register — sends verification code ──
-app.post("/api/register", async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password)
-      return res.status(400).json({ error: "All fields are required." });
-    if (username.trim().length < 2)
-      return res.status(400).json({ error: "Username must be at least 2 characters." });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      return res.status(400).json({ error: "Please enter a valid email address." });
-    if (password.length < 6)
-      return res.status(400).json({ error: "Password must be at least 6 characters." });
-
-    const users = loadUsers();
-    if (users.find(u => u.email === email.toLowerCase().trim()))
-      return res.status(409).json({ error: "This email is already registered. Please login." });
-
-    const hash = await bcrypt.hash(password, 10);
-    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
-    const cleanEmail = email.toLowerCase().trim();
-
-    pendingVerifications.set(cleanEmail, {
-      code,
-      username: username.trim(),
-      hashedPassword: hash,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-    });
-
-    await sendVerificationEmail(cleanEmail, username.trim(), code);
-    res.json({ message: "Verification code sent. Please check your email.", email: cleanEmail });
-  } catch (err) {
-    console.error("Register error:", err.code, err.message);
-    let msg;
-    if (err.code === "EAUTH")
-      msg = "Resend API key is invalid or unauthorized. Check your RESEND_API_KEY in Render environment variables.";
-    else if (err.message?.includes("Invalid login") || err.message?.includes("Username and Password"))
-      msg = "Email auth failed. Check your RESEND_API_KEY.";
-    else if (err.name === "AbortError" || err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT")
-      msg = "Email request timed out. Check your RESEND_API_KEY is set in Render.";
-    else if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND")
-      msg = "Cannot connect to Resend. Check your server connection.";
-    else
-      msg = `Email error: ${err.message || "Unknown error"} (code: ${err.code || "none"})`;
-    res.status(500).json({ error: msg });
-  }
-});
-
-// ── Verify Email ──
-app.post("/api/verify-email", async (req, res) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code)
-      return res.status(400).json({ error: "Email and code are required." });
-
-    const cleanEmail = email.toLowerCase().trim();
-    const pending = pendingVerifications.get(cleanEmail);
-
-    if (!pending)
-      return res.status(400).json({ error: "No pending registration for this email. Please register again." });
-    if (Date.now() > pending.expiresAt)
-      return res.status(400).json({ error: "Code has expired. Please register again." });
-    if (pending.code !== code.trim())
-      return res.status(400).json({ error: "Incorrect code. Please check your email and try again." });
-
-    // Code correct — create the account
-    const users = loadUsers();
-    if (users.find(u => u.email === cleanEmail))
-      return res.status(409).json({ error: "This email is already registered. Please login." });
-
-    const token = generateToken();
-    const user = {
-      id: Date.now().toString(),
-      username: pending.username,
-      email: cleanEmail,
-      password: pending.hashedPassword,
-      token,
-      telegramBotToken: "",
-      telegramChatId: "",
-    };
-    users.push(user);
-    saveUsers(users);
-    pendingVerifications.delete(cleanEmail);
-
-    res.json({ token, username: user.username, email: user.email, hasTelegram: false });
-  } catch (err) {
-    console.error("Verify error:", err);
-    res.status(500).json({ error: "Verification failed. Please try again." });
-  }
-});
-
-// ── Resend Code ──
-app.post("/api/resend-code", async (req, res) => {
-  try {
-    const { email } = req.body;
-    const cleanEmail = (email || "").toLowerCase().trim();
-    const pending = pendingVerifications.get(cleanEmail);
-    if (!pending)
-      return res.status(400).json({ error: "No pending registration found. Please register again." });
-
-    const newCode = String(Math.floor(100000 + Math.random() * 900000));
-    pending.code = newCode;
-    pending.expiresAt = Date.now() + 10 * 60 * 1000;
-    pendingVerifications.set(cleanEmail, pending);
-
-    await sendVerificationEmail(cleanEmail, pending.username, newCode);
-    res.json({ message: "New code sent to your email." });
-  } catch (err) {
-    console.error("Resend-code error:", err.code, err.message);
-    let msg;
-    if (err.code === "EAUTH")
-      msg = "Resend API key is invalid or not set. Check RESEND_API_KEY in Render environment variables.";
-    else if (err.name === "AbortError" || err.code === "ETIMEDOUT")
-      msg = "Email request timed out. Check your RESEND_API_KEY is set in Render.";
-    else if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND")
-      msg = "Cannot connect to Resend. Check your server connection.";
-    else
-      msg = `Email error: ${err.message || "Unknown"} (code: ${err.code || "none"})`;
-    res.status(500).json({ error: msg });
-  }
-});
 
 // ── Login ──
 app.post("/api/login", async (req, res) => {
@@ -408,6 +224,42 @@ app.post("/api/telegram/send", authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Telegram send error:", err);
+    res.status(500).json({ error: "Failed to send to Telegram. Please try again." });
+  }
+});
+
+// ── Telegram Send (guest — no auth required) ──
+app.post("/api/telegram/send-guest", async (req, res) => {
+  try {
+    const { message, telegramBotToken, telegramChatId } = req.body;
+    if (!telegramBotToken || !telegramChatId)
+      return res.status(400).json({ error: "Bot Token and Chat ID are required." });
+    if (!message)
+      return res.status(400).json({ error: "No message to send." });
+
+    const header = `🔬 MedExplain AI — Your Lab Results\n${"─".repeat(35)}\n\n`;
+    const fullMsg = header + message;
+    const MAX_LEN = 4000;
+    for (let i = 0; i < fullMsg.length; i += MAX_LEN) {
+      const chunk = fullMsg.slice(i, i + MAX_LEN);
+      const tgRes = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: telegramChatId, text: chunk }),
+      });
+      const result = await tgRes.json();
+      if (!result.ok) {
+        const desc = result.description || "Telegram API error";
+        return res.status(400).json({
+          error: desc.includes("bot was blocked") ? "Bot was blocked by the user. Send a message to your bot first." :
+                 desc.includes("chat not found") ? "Chat ID not found. Make sure you've started a conversation with your bot." :
+                 desc.includes("Unauthorized") ? "Invalid Bot Token." : desc,
+        });
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Guest telegram error:", err);
     res.status(500).json({ error: "Failed to send to Telegram. Please try again." });
   }
 });
@@ -525,7 +377,4 @@ app.get("/api/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
   if (!process.env.GROQ_API_KEY) console.warn("⚠️  GROQ_API_KEY not set.");
-  const resendKey = process.env.RESEND_API_KEY ? `set (starts with ${process.env.RESEND_API_KEY.slice(0,5)}...)` : "(not set ⚠️)";
-  const fromAddr = process.env.RESEND_FROM || "onboarding@resend.dev";
-  console.log(`📧 RESEND_API_KEY: ${resendKey} | FROM: ${fromAddr}`);
 });

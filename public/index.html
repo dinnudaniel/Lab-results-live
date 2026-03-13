@@ -49,14 +49,12 @@
 
     .auth-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 
-    .auth-tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
-    .auth-tab { flex: 1; padding: 14px; font-size: 0.92rem; font-weight: 600; text-align: center;
-      cursor: pointer; border: none; background: none; color: var(--gray-400);
-      border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
-    .auth-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+    .auth-form { padding: 24px; }
 
-    .auth-form { padding: 24px; display: none; }
-    .auth-form.active { display: block; }
+    .guest-btn { width: 100%; padding: 13px; background: white; color: var(--gray-600);
+      font-size: 0.9rem; font-weight: 600; border: 1px solid var(--gray-200); border-radius: 10px;
+      cursor: pointer; margin-top: 12px; transition: background 0.2s; }
+    .guest-btn:hover { background: var(--gray-100); }
 
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 0.85rem; font-weight: 600;
@@ -232,14 +230,6 @@
     .modal-status.success { display: block; color: var(--green); }
     .modal-status.error { display: block; color: var(--red); }
 
-    /* ── Login required notice ── */
-    .login-notice { background: var(--brand-light); border: 1px solid #bfdbfe;
-      border-radius: 10px; padding: 14px 16px; font-size: 0.88rem; color: var(--brand-dark);
-      display: flex; gap: 10px; align-items: center; }
-    .login-notice button { margin-left: auto; background: var(--brand); color: white;
-      border: none; border-radius: 7px; padding: 6px 12px; font-size: 0.82rem;
-      cursor: pointer; white-space: nowrap; }
-
     @media (max-width: 480px) {
       .hero h2 { font-size: 1.4rem; }
       .card { padding: 16px; }
@@ -258,17 +248,11 @@
     <div class="auth-hero">
       <div class="auth-logo">🔬</div>
       <h2>Welcome to <span>MedExplain AI</span></h2>
-      <p>Create an account to save your Telegram settings and get results sent straight to your phone.</p>
+      <p>Login to save your Telegram settings, or continue as a guest.</p>
     </div>
 
     <div class="auth-card">
-      <div class="auth-tabs">
-        <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
-        <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
-      </div>
-
-      <!-- Login Form -->
-      <div class="auth-form active" id="form-login">
+      <div class="auth-form" id="form-login">
         <div class="form-group">
           <label>Email Address</label>
           <input type="email" id="login-email" placeholder="you@gmail.com" autocomplete="email" />
@@ -279,53 +263,8 @@
         </div>
         <button class="auth-btn" id="login-btn" onclick="doLogin()">Login</button>
         <div class="auth-error" id="login-error"></div>
+        <button class="guest-btn" onclick="continueAsGuest()">Continue as Guest</button>
       </div>
-
-      <!-- Register Form -->
-      <div class="auth-form" id="form-register">
-        <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="reg-username" placeholder="Your name" autocomplete="name" />
-        </div>
-        <div class="form-group">
-          <label>Gmail / Email Address</label>
-          <input type="email" id="reg-email" placeholder="you@gmail.com" autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="reg-password" placeholder="At least 6 characters" autocomplete="new-password" />
-        </div>
-        <button class="auth-btn" id="register-btn" onclick="doRegister()">Create Account</button>
-        <div class="auth-error" id="register-error"></div>
-      </div>
-
-      <!-- Verify Email Form (shown after register) -->
-      <div class="auth-form" id="form-verify">
-        <div style="text-align:center;margin-bottom:20px;">
-          <div style="font-size:2.5rem;margin-bottom:8px;">📧</div>
-          <p style="font-size:0.9rem;color:var(--gray-600);line-height:1.5;">
-            We sent a <strong>6-digit code</strong> to<br>
-            <strong id="verify-email-display" style="color:var(--brand)"></strong>
-          </p>
-          <p style="font-size:0.82rem;color:var(--gray-400);margin-top:4px;">Check your inbox (and spam folder)</p>
-        </div>
-        <div class="form-group">
-          <label>Verification Code</label>
-          <input type="text" id="verify-code" placeholder="Enter 6-digit code"
-            maxlength="6" inputmode="numeric" pattern="[0-9]*"
-            style="font-size:1.4rem;letter-spacing:0.3em;text-align:center;font-weight:700;" />
-        </div>
-        <button class="auth-btn" id="verify-btn" onclick="doVerify()">Verify & Create Account</button>
-        <div class="auth-error" id="verify-error"></div>
-        <div style="text-align:center;margin-top:14px;">
-          <span style="font-size:0.82rem;color:var(--gray-400);">Didn't receive it? </span>
-          <a onclick="doResend()" style="font-size:0.82rem;color:var(--brand);cursor:pointer;text-decoration:underline;" id="resend-link">Resend code</a>
-        </div>
-        <div style="text-align:center;margin-top:8px;">
-          <a onclick="switchAuthTab('register')" style="font-size:0.82rem;color:var(--gray-400);cursor:pointer;text-decoration:underline;">← Back to register</a>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -337,9 +276,9 @@
   <header>
     <div class="logo">🔬</div>
     <div><h1>MedExplain AI</h1><p>Lab results in plain English</p></div>
-    <div class="header-user" id="headerUser" style="display:none">
+    <div class="header-user" id="headerUser">
       <span id="headerUsername"></span>
-      <button onclick="logout()">Logout</button>
+      <button id="headerActionBtn" onclick="headerAction()">Login</button>
     </div>
   </header>
 
@@ -447,33 +386,12 @@
     </div>
     <div class="modal-status" id="tgStatus"></div>
     <div class="modal-footer">
-      <button class="btn-save" onclick="saveTelegramOnly()">Save Settings</button>
+      <button class="btn-save" id="tgSaveBtn" onclick="saveTelegramOnly()">Save Settings</button>
       <button class="btn-send" id="tgSendBtn" onclick="sendToTelegram()">Send Results ✈️</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     LOGIN REQUIRED MODAL (for guests)
-══════════════════════════════════════ -->
-<div class="modal-overlay" id="loginRequiredModal">
-  <div class="modal">
-    <div class="modal-header" style="background: var(--brand);">
-      <span style="font-size:1.3rem;">🔒</span>
-      <h3>Login Required</h3>
-      <button class="modal-close" onclick="document.getElementById('loginRequiredModal').classList.remove('visible')">×</button>
-    </div>
-    <div class="modal-body">
-      <p style="color:var(--gray-600);font-size:0.9rem;line-height:1.6;">
-        You need to create a free account to use the Telegram feature. Your bot token and chat ID will be saved securely to your account.
-      </p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-save" onclick="document.getElementById('loginRequiredModal').classList.remove('visible')">Cancel</button>
-      <button class="btn-send" style="background:var(--brand);" onclick="goToLogin()">Login / Register</button>
-    </div>
-  </div>
-</div>
 
 <script>
 // ════════════════════════════════════════
@@ -494,12 +412,6 @@ function loadUserFromStorage() {
 // ════════════════════════════════════════
 // Auth UI
 // ════════════════════════════════════════
-function switchAuthTab(tab) {
-  showAuthForm(tab);
-  document.getElementById('login-error').classList.remove('visible');
-  document.getElementById('register-error').classList.remove('visible');
-}
-
 function showAuthError(formId, msg) {
   const el = document.getElementById(formId + '-error');
   el.textContent = msg;
@@ -531,113 +443,9 @@ async function doLogin() {
   }
 }
 
-let pendingEmail = ''; // email waiting for verification
-
-async function doRegister() {
-  const username = document.getElementById('reg-username').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  if (!username || !email || !password) return showAuthError('register', 'Please fill in all fields.');
-
-  const btn = document.getElementById('register-btn');
-  btn.disabled = true; btn.textContent = 'Sending code…';
-  document.getElementById('register-error').classList.remove('visible');
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 35000);
-    let res;
-    try {
-      res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-        signal: controller.signal,
-      });
-    } catch (fetchErr) {
-      if (fetchErr.name === 'AbortError') throw new Error('Request timed out. Check your internet and try again.');
-      throw fetchErr;
-    } finally {
-      clearTimeout(timer);
-    }
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Registration failed');
-    // Show verification step
-    pendingEmail = data.email;
-    document.getElementById('verify-email-display').textContent = data.email;
-    document.getElementById('verify-code').value = '';
-    document.getElementById('verify-error').classList.remove('visible');
-    showAuthForm('verify');
-    setTimeout(() => document.getElementById('verify-code').focus(), 100);
-  } catch (err) {
-    showAuthError('register', err.message);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Create Account';
-  }
-}
-
-async function doVerify() {
-  const code = document.getElementById('verify-code').value.trim();
-  if (!code) return showAuthError('verify', 'Please enter the 6-digit code from your email.');
-
-  const btn = document.getElementById('verify-btn');
-  btn.disabled = true; btn.textContent = 'Verifying…';
-  document.getElementById('verify-error').classList.remove('visible');
-
-  try {
-    const res = await fetch('/api/verify-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: pendingEmail, code }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Verification failed');
-    onAuthSuccess(data);
-  } catch (err) {
-    showAuthError('verify', err.message);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Verify & Create Account';
-  }
-}
-
-async function doResend() {
-  const link = document.getElementById('resend-link');
-  link.textContent = 'Sending…';
-  try {
-    const ctrl2 = new AbortController();
-    const t2 = setTimeout(() => ctrl2.abort(), 35000);
-    let res;
-    try {
-      res = await fetch('/api/resend-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: pendingEmail }),
-        signal: ctrl2.signal,
-      });
-    } catch (e2) {
-      if (e2.name === 'AbortError') throw new Error('Request timed out. Try again.');
-      throw e2;
-    } finally {
-      clearTimeout(t2);
-    }
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    link.textContent = '✅ Code resent!';
-    setTimeout(() => { link.textContent = 'Resend code'; }, 4000);
-  } catch (err) {
-    showAuthError('verify', err.message);
-    link.textContent = 'Resend code';
-  }
-}
-
-function showAuthForm(name) {
-  ['login','register','verify'].forEach(f => {
-    document.getElementById('form-' + f).classList.toggle('active', f === name);
-  });
-  // update tab styling
-  document.querySelectorAll('.auth-tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && name === 'login') || (i === 1 && name === 'register'));
-  });
+function continueAsGuest() {
+  currentUser = null;
+  showUploadPage();
 }
 
 function onAuthSuccess(user) {
@@ -649,22 +457,25 @@ function onAuthSuccess(user) {
 function logout() {
   currentUser = null;
   clearUserFromStorage();
-  showPage('auth');
+  showUploadPage();
 }
 
-function goToLogin() {
-  document.getElementById('loginRequiredModal').classList.remove('visible');
-  goBack();
-  setTimeout(() => showPage('auth'), 100);
+function headerAction() {
+  if (currentUser) {
+    logout();
+  } else {
+    showPage('auth');
+  }
 }
 
 function showUploadPage() {
   showPage('upload');
   if (currentUser) {
-    document.getElementById('headerUser').style.display = 'flex';
     document.getElementById('headerUsername').textContent = '👤 ' + currentUser.username;
+    document.getElementById('headerActionBtn').textContent = 'Logout';
   } else {
-    document.getElementById('headerUser').style.display = 'none';
+    document.getElementById('headerUsername').textContent = '';
+    document.getElementById('headerActionBtn').textContent = 'Login';
   }
 }
 
@@ -676,22 +487,19 @@ function showPage(name) {
   else { chatPage.classList.remove('active'); }
 }
 
-// On page load — check for saved session
+// On page load — restore session or go straight to app as guest
 window.addEventListener('load', () => {
   const saved = loadUserFromStorage();
   if (saved && saved.token) {
     currentUser = saved;
-    showUploadPage();
   }
-  // else stay on auth page
+  showUploadPage();
 });
 
-// Enter key on auth forms
+// Enter key on login form
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('page-auth').style.display !== 'none') {
-    if (document.getElementById('form-login').classList.contains('active')) doLogin();
-    else if (document.getElementById('form-register').classList.contains('active')) doRegister();
-    else if (document.getElementById('form-verify').classList.contains('active')) doVerify();
+    doLogin();
   }
 });
 
@@ -699,21 +507,24 @@ document.addEventListener('keydown', e => {
 // Telegram Modal
 // ════════════════════════════════════════
 function openTelegramModal() {
-  if (!currentUser) {
-    document.getElementById('loginRequiredModal').classList.add('visible');
-    return;
-  }
-  // Pre-fill chat ID if saved
-  if (currentUser.telegramChatId) {
-    document.getElementById('tgChatId').value = currentUser.telegramChatId;
-  }
-  if (currentUser.hasTelegram) {
-    document.getElementById('tgSavedNote').classList.add('visible');
-    document.getElementById('tgHelpText').style.display = 'none';
-    document.getElementById('tgBotToken').placeholder = '••••• (already saved, enter to update)';
+  if (currentUser) {
+    if (currentUser.telegramChatId) {
+      document.getElementById('tgChatId').value = currentUser.telegramChatId;
+    }
+    if (currentUser.hasTelegram) {
+      document.getElementById('tgSavedNote').classList.add('visible');
+      document.getElementById('tgHelpText').style.display = 'none';
+      document.getElementById('tgBotToken').placeholder = '••••• (already saved, enter to update)';
+    } else {
+      document.getElementById('tgSavedNote').classList.remove('visible');
+      document.getElementById('tgHelpText').style.display = 'block';
+    }
+    document.getElementById('tgSaveBtn').style.display = '';
   } else {
+    // Guest — show modal but hide save button
     document.getElementById('tgSavedNote').classList.remove('visible');
     document.getElementById('tgHelpText').style.display = 'block';
+    document.getElementById('tgSaveBtn').style.display = 'none';
   }
   setTgStatus('', '');
   document.getElementById('telegramModal').classList.add('visible');
@@ -731,6 +542,7 @@ function setTgStatus(type, msg) {
 }
 
 async function saveTelegramOnly() {
+  if (!currentUser) return;
   const botToken = document.getElementById('tgBotToken').value.trim();
   const chatId = document.getElementById('tgChatId').value.trim();
   if (!botToken || !chatId) return setTgStatus('error', '⚠️ Please enter both Bot Token and Chat ID.');
@@ -759,7 +571,8 @@ async function sendToTelegram() {
   const botToken = document.getElementById('tgBotToken').value.trim();
   const chatId = document.getElementById('tgChatId').value.trim();
 
-  if (!currentUser.hasTelegram && (!botToken || !chatId)) {
+  const hasSaved = currentUser && currentUser.hasTelegram;
+  if (!hasSaved && (!botToken || !chatId)) {
     return setTgStatus('error', '⚠️ Please enter your Bot Token and Chat ID first.');
   }
 
@@ -768,7 +581,6 @@ async function sendToTelegram() {
   setTgStatus('', '');
 
   try {
-    // Strip markdown from analysis text for clean Telegram message
     const cleanText = analysisText
       .replace(/#{1,4} /g, '')
       .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -776,19 +588,30 @@ async function sendToTelegram() {
       .replace(/^---+$/gm, '─────────────────')
       .replace(/\n{3,}/g, '\n\n');
 
-    const body = { message: cleanText };
-    if (botToken) body.telegramBotToken = botToken;
-    if (chatId) body.telegramChatId = chatId;
+    let res;
+    if (currentUser) {
+      // Logged-in: use authenticated endpoint (saves settings to account)
+      const body = { message: cleanText };
+      if (botToken) body.telegramBotToken = botToken;
+      if (chatId) body.telegramChatId = chatId;
+      res = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentUser.token },
+        body: JSON.stringify(body),
+      });
+    } else {
+      // Guest: use unauthenticated endpoint
+      res = await fetch('/api/telegram/send-guest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: cleanText, telegramBotToken: botToken, telegramChatId: chatId }),
+      });
+    }
 
-    const res = await fetch('/api/telegram/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentUser.token },
-      body: JSON.stringify(body),
-    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
-    if (botToken || chatId) {
+    if (currentUser && (botToken || chatId)) {
       currentUser.hasTelegram = true;
       if (chatId) currentUser.telegramChatId = chatId;
       saveUserToStorage(currentUser);
