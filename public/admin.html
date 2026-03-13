@@ -97,6 +97,37 @@
     .refresh-btn { background: none; border: none; color: #3b82f6; cursor: pointer;
       font-size: 0.82rem; padding: 0; text-decoration: underline; }
 
+    /* Sessions */
+    .session-list { display: flex; flex-direction: column; gap: 12px; }
+    .session-card { background: #1e293b; border-radius: 12px; border: 1px solid #1e3a5f;
+      overflow: hidden; }
+    .session-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      background: #162032; cursor: pointer; user-select: none; }
+    .session-header:hover { background: #1a2a40; }
+    .session-type { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 2px 8px; border-radius: 99px; }
+    .session-type.analysis { background: #1e3a5f; color: #60a5fa; }
+    .session-type.chat { background: #2e1a5f; color: #a78bfa; }
+    .session-meta { font-size: 0.78rem; color: #64748b; flex: 1; }
+    .session-toggle { font-size: 0.78rem; color: #475569; }
+    .session-body { padding: 14px 16px; border-top: 1px solid #0f172a; display: none; }
+    .session-body.open { display: block; }
+    .session-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #475569; margin-bottom: 6px; margin-top: 12px; }
+    .session-label:first-child { margin-top: 0; }
+    .session-text { font-size: 0.82rem; color: #cbd5e1; white-space: pre-wrap;
+      line-height: 1.6; background: #0f172a; border-radius: 8px; padding: 10px 12px;
+      max-height: 320px; overflow-y: auto; }
+    .session-q { font-size: 0.85rem; color: #93c5fd; background: #0f172a;
+      border-radius: 8px; padding: 10px 12px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid #1e3a5f; margin-bottom: 16px; }
+    .tab { padding: 9px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      color: #475569; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+    .tab:hover:not(.active) { color: #94a3b8; }
+
     @media (max-width: 600px) {
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .content { padding: 16px 12px; }
@@ -190,12 +221,25 @@
       </table>
     </div>
 
+    <!-- Sessions / Activity Log -->
+    <div class="section-title" style="margin-top:28px">Recent Activity Log</div>
+    <div class="tabs">
+      <div class="tab active" id="tabAll" onclick="switchTab('all')">All</div>
+      <div class="tab" id="tabAnalyses" onclick="switchTab('analysis')">Lab Analyses</div>
+      <div class="tab" id="tabChats" onclick="switchTab('chat')">Chat Messages</div>
+    </div>
+    <div id="sessionList" class="session-list">
+      <div class="no-data" id="sessionEmpty">No activity recorded yet.</div>
+    </div>
+
   </div>
 </div>
 
 <script>
 let adminKey = '';
 let allUsers = [];
+let allSessions = [];
+let activeTab = 'all';
 
 document.getElementById('keyInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') login();
@@ -211,13 +255,18 @@ async function login() {
   const err = document.getElementById('loginErr');
   err.style.display = 'none';
   try {
-    const res = await fetch('/api/admin/stats?key=' + encodeURIComponent(key));
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Invalid key');
+    const [statsRes, sessRes] = await Promise.all([
+      fetch('/api/admin/stats?key=' + encodeURIComponent(key)),
+      fetch('/api/admin/sessions?key=' + encodeURIComponent(key)),
+    ]);
+    const data = await statsRes.json();
+    if (!statsRes.ok) throw new Error(data.error || 'Invalid key');
+    const sessData = await sessRes.json();
     adminKey = key;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     render(data);
+    renderSessions(sessData.sessions || []);
   } catch (e) {
     err.textContent = '⚠️ ' + e.message;
     err.style.display = 'block';
@@ -226,10 +275,15 @@ async function login() {
 
 async function refresh() {
   try {
-    const res = await fetch('/api/admin/stats?key=' + encodeURIComponent(adminKey));
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed');
+    const [statsRes, sessRes] = await Promise.all([
+      fetch('/api/admin/stats?key=' + encodeURIComponent(adminKey)),
+      fetch('/api/admin/sessions?key=' + encodeURIComponent(adminKey)),
+    ]);
+    const data = await statsRes.json();
+    if (!statsRes.ok) throw new Error(data.error || 'Failed');
+    const sessData = await sessRes.json();
     render(data);
+    renderSessions(sessData.sessions || []);
   } catch (e) { alert('Refresh failed: ' + e.message); }
 }
 
@@ -262,7 +316,7 @@ function render(data) {
     const aH = Math.round((d.analyses / maxVal) * 110);
     const cH = Math.round((d.chats / maxVal) * 110);
     const tH = Math.round((d.telegramSends / maxVal) * 110);
-    const label = d.date.slice(5); // MM-DD
+    const label = d.date.slice(5);
     const group = document.createElement('div');
     group.className = 'bar-group';
     group.title = `${d.date}\nAnalyses: ${d.analyses}\nChats: ${d.chats}\nTelegram: ${d.telegramSends}\nVisitors: ${d.visitors}`;
@@ -311,6 +365,78 @@ function filterTable() {
     ? allUsers.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     : allUsers;
   renderTable(filtered);
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  ['all', 'analysis', 'chat'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  renderSessions(allSessions);
+}
+
+function renderSessions(sessions) {
+  allSessions = sessions;
+  const filtered = activeTab === 'all' ? sessions : sessions.filter(s => s.type === activeTab);
+  const list = document.getElementById('sessionList');
+  const empty = document.getElementById('sessionEmpty');
+
+  // Remove old cards (keep the empty placeholder)
+  Array.from(list.children).forEach(el => { if (el !== empty) el.remove(); });
+
+  if (filtered.length === 0) {
+    empty.style.display = 'block';
+    empty.textContent = sessions.length === 0 ? 'No activity recorded yet. Activity is recorded going forward after this update.' : 'No entries for this filter.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  filtered.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'session-card';
+    const dt = new Date(s.timestamp).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const ip = s.ip || '—';
+    const bodyId = 'body-' + s.id;
+
+    if (s.type === 'analysis') {
+      card.innerHTML = `
+        <div class="session-header" onclick="toggleBody('${bodyId}')">
+          <span class="session-type analysis">Lab Analysis</span>
+          <span class="session-meta">${dt} &nbsp;·&nbsp; ${s.imageCount || 1} image(s) &nbsp;·&nbsp; IP: ${esc(ip)}</span>
+          <span class="session-toggle" id="toggle-${bodyId}">▼ Show</span>
+        </div>
+        <div class="session-body" id="${bodyId}">
+          <div class="session-label">Analysis Result</div>
+          <div class="session-text">${esc(s.result || '')}</div>
+        </div>`;
+    } else {
+      card.innerHTML = `
+        <div class="session-header" onclick="toggleBody('${bodyId}')">
+          <span class="session-type chat">Chat</span>
+          <span class="session-meta">${dt} &nbsp;·&nbsp; IP: ${esc(ip)}</span>
+          <span class="session-toggle" id="toggle-${bodyId}">▼ Show</span>
+        </div>
+        <div class="session-body" id="${bodyId}">
+          <div class="session-label">User Asked</div>
+          <div class="session-q">${esc(s.userMessage || '')}</div>
+          <div class="session-label">AI Response</div>
+          <div class="session-text">${esc(s.aiResponse || '')}</div>
+        </div>`;
+    }
+    list.appendChild(card);
+  });
+}
+
+function toggleBody(id) {
+  const body = document.getElementById(id);
+  const toggle = document.getElementById('toggle-' + id);
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  if (toggle) toggle.textContent = open ? '▲ Hide' : '▼ Show';
 }
 
 function esc(t) {

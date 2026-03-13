@@ -47,6 +47,7 @@ async function resizeImage(buffer) {
 const DATA_DIR = path.join(__dirname, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const ANALYTICS_FILE = path.join(DATA_DIR, "analytics.json");
+const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
 
 function loadUsers() {
   try {
@@ -72,6 +73,21 @@ function loadAnalytics() {
 function saveAnalytics(data) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+}
+
+function loadSessions() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(SESSIONS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8"));
+  } catch { return []; }
+}
+
+function saveSessions(sessions) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  // Keep only last 500 entries to prevent unbounded growth
+  const trimmed = sessions.length > 500 ? sessions.slice(-500) : sessions;
+  fs.writeFileSync(SESSIONS_FILE, JSON.stringify(trimmed, null, 2));
 }
 
 function trackEvent(type, ip) {
@@ -397,6 +413,17 @@ app.get("/api/admin/stats", (req, res) => {
   });
 });
 
+app.get("/api/admin/sessions", (req, res) => {
+  const key = req.query.key || req.headers["x-admin-key"];
+  const adminKey = process.env.ADMIN_KEY;
+  if (!adminKey || key !== adminKey)
+    return res.status(401).json({ error: "Unauthorized" });
+
+  const sessions = loadSessions();
+  // Return last 200 sessions, newest first
+  res.json({ sessions: sessions.slice(-200).reverse() });
+});
+
 // ── Analyze ──
 app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
   const files = req.files;
@@ -434,12 +461,28 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
       ],
     });
 
+    let fullAnalysis = "";
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
       if (text) {
+        fullAnalysis += text;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
+
+    // Save analysis session
+    try {
+      const sessions = loadSessions();
+      sessions.push({
+        id: Date.now().toString(),
+        type: "analysis",
+        timestamp: new Date().toISOString(),
+        ip: (req.ip || "").replace("::ffff:", ""),
+        imageCount: files.length,
+        result: fullAnalysis,
+      });
+      saveSessions(sessions);
+    } catch {}
 
     trackEvent("analyze", req.ip);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -484,12 +527,29 @@ app.post("/api/chat", async (req, res) => {
       ],
     });
 
+    let fullResponse = "";
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
       if (text) {
+        fullResponse += text;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
+
+    // Save chat session
+    try {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+      const sessions = loadSessions();
+      sessions.push({
+        id: Date.now().toString(),
+        type: "chat",
+        timestamp: new Date().toISOString(),
+        ip: (req.ip || "").replace("::ffff:", ""),
+        userMessage: lastUserMsg?.content || "",
+        aiResponse: fullResponse,
+      });
+      saveSessions(sessions);
+    } catch {}
 
     trackEvent("chat", req.ip);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
