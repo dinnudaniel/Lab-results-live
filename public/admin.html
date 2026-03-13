@@ -7,61 +7,175 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f3f4f6; color: #111827; min-height: 100vh; padding: 32px 16px; }
-    .wrap { max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
-    .sub { color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; }
-    .card { background: white; border-radius: 14px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); padding: 24px; margin-bottom: 20px; }
-    .key-row { display: flex; gap: 10px; margin-bottom: 0; }
-    .key-row input { flex: 1; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 9px;
-      font-size: 0.92rem; outline: none; }
-    .key-row input:focus { border-color: #2563eb; }
-    .key-row button { padding: 10px 20px; background: #2563eb; color: white; border: none;
-      border-radius: 9px; font-size: 0.92rem; font-weight: 600; cursor: pointer; }
-    .key-row button:hover { background: #1d4ed8; }
-    .stat-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat { background: #eff6ff; border-radius: 12px; padding: 16px 24px; flex: 1; min-width: 120px; }
-    .stat .num { font-size: 2rem; font-weight: 900; color: #2563eb; }
-    .stat .label { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th { text-align: left; padding: 10px 12px; background: #f9fafb; color: #6b7280;
-      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-      border-bottom: 1px solid #e5e7eb; }
-    td { padding: 11px 12px; border-bottom: 1px solid #f3f4f6; color: #374151; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f9fafb; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
-    .badge.yes { background: #dcfce7; color: #16a34a; }
-    .badge.no { background: #f3f4f6; color: #9ca3af; }
-    .error { color: #dc2626; font-size: 0.88rem; margin-top: 12px; }
-    .empty { color: #9ca3af; text-align: center; padding: 32px; font-size: 0.9rem; }
+      background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    /* Login screen */
+    #loginScreen { display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px; }
+    .login-box { background: #1e293b; border-radius: 16px; padding: 36px 32px;
+      width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .login-box h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; color: #f1f5f9; }
+    .login-box p { color: #64748b; font-size: 0.85rem; margin-bottom: 24px; }
+    .login-box input { width: 100%; padding: 11px 14px; background: #0f172a;
+      border: 1px solid #334155; border-radius: 10px; color: #f1f5f9; font-size: 0.93rem;
+      outline: none; margin-bottom: 12px; }
+    .login-box input:focus { border-color: #3b82f6; }
+    .login-box button { width: 100%; padding: 11px; background: #3b82f6; color: white;
+      border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+    .login-box button:hover { background: #2563eb; }
+    .login-error { color: #f87171; font-size: 0.85rem; margin-top: 10px; display: none; }
+
+    /* Dashboard */
+    #dashboard { display: none; }
+    .topbar { background: #1e293b; border-bottom: 1px solid #1e3a5f;
+      padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .topbar h1 { font-size: 1.1rem; font-weight: 800; color: #f1f5f9; }
+    .topbar button { padding: 7px 16px; background: #1e3a5f; color: #93c5fd;
+      border: 1px solid #1e3a5f; border-radius: 8px; font-size: 0.8rem; cursor: pointer; }
+    .topbar button:hover { background: #1d4ed8; color: white; }
+
+    .content { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    /* Section titles */
+    .section-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #475569; margin-bottom: 12px; margin-top: 28px; }
+    .section-title:first-child { margin-top: 0; }
+
+    /* Stat cards */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+    .stat-card { background: #1e293b; border-radius: 14px; padding: 20px 18px;
+      border: 1px solid #1e3a5f; }
+    .stat-card .num { font-size: 2rem; font-weight: 900; line-height: 1; }
+    .stat-card .lbl { font-size: 0.78rem; color: #64748b; margin-top: 5px; }
+    .stat-card.blue .num { color: #60a5fa; }
+    .stat-card.green .num { color: #34d399; }
+    .stat-card.purple .num { color: #a78bfa; }
+    .stat-card.orange .num { color: #fb923c; }
+    .stat-card.teal .num { color: #2dd4bf; }
+
+    /* Chart */
+    .chart-wrap { background: #1e293b; border-radius: 14px; padding: 20px;
+      border: 1px solid #1e3a5f; overflow-x: auto; }
+    .chart-header { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .chart-legend { display: flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; color: #94a3b8; }
+    .chart-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .bars-container { display: flex; align-items: flex-end; gap: 6px;
+      height: 140px; min-width: 600px; }
+    .bar-group { display: flex; flex-direction: column; align-items: center;
+      gap: 2px; flex: 1; }
+    .bar-stack { display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-end; width: 100%; gap: 1px; height: 120px; }
+    .bar-seg { width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; }
+    .bar-seg.analyze { background: #60a5fa; }
+    .bar-seg.chat { background: #a78bfa; }
+    .bar-seg.tg { background: #34d399; }
+    .bar-date { font-size: 0.6rem; color: #475569; margin-top: 5px; white-space: nowrap; }
+    .no-data { color: #475569; font-size: 0.85rem; text-align: center; padding: 40px 0; }
+
+    /* Table */
+    .table-wrap { background: #1e293b; border-radius: 14px; overflow: hidden;
+      border: 1px solid #1e3a5f; }
+    .table-toolbar { padding: 14px 18px; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid #0f172a; }
+    .table-toolbar input { padding: 7px 12px; background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0; font-size: 0.82rem; outline: none; width: 200px; }
+    .table-toolbar input:focus { border-color: #3b82f6; }
+    .table-toolbar .count { font-size: 0.78rem; color: #475569; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 10px 16px; background: #0f172a; color: #475569;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 11px 16px; border-top: 1px solid #0f172a; color: #cbd5e1; }
+    tr:hover td { background: #162032; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 99px;
+      font-size: 0.72rem; font-weight: 700; }
+    .badge.yes { background: #064e3b; color: #34d399; }
+    .badge.no { background: #1e293b; color: #475569; border: 1px solid #334155; }
+    .empty-row td { text-align: center; color: #475569; padding: 32px; }
+
+    /* Refresh button */
+    .refresh-btn { background: none; border: none; color: #3b82f6; cursor: pointer;
+      font-size: 0.82rem; padding: 0; text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .content { padding: 16px 12px; }
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🔬 MedExplain AI — Admin</h1>
-  <p class="sub">Enter your ADMIN_KEY to view registered users.</p>
 
-  <div class="card">
-    <div class="key-row">
-      <input type="password" id="keyInput" placeholder="Admin key" autocomplete="off" />
-      <button onclick="load()">View Stats</button>
+<!-- Login -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>🔬 MedExplain AI Admin</h1>
+    <p>Enter your admin key to access the dashboard.</p>
+    <input type="password" id="keyInput" placeholder="Admin key" autocomplete="off" />
+    <button onclick="login()">Access Dashboard</button>
+    <div class="login-error" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="topbar">
+    <h1>🔬 MedExplain AI &mdash; Admin Dashboard</h1>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="lastUpdated" style="font-size:0.75rem;color:#475569"></span>
+      <button onclick="refresh()">↻ Refresh</button>
+      <button onclick="logout()">Logout</button>
     </div>
-    <div class="error" id="errMsg" style="display:none"></div>
   </div>
 
-  <div id="stats" style="display:none">
-    <div class="stat-row">
-      <div class="stat">
-        <div class="num" id="statCount">0</div>
-        <div class="label">Registered Users</div>
+  <div class="content">
+
+    <!-- Overview Stats -->
+    <div class="section-title">Overview</div>
+    <div class="stat-grid">
+      <div class="stat-card blue">
+        <div class="num" id="statUsers">—</div>
+        <div class="lbl">Registered Users</div>
       </div>
-      <div class="stat">
-        <div class="num" id="statTelegram">0</div>
-        <div class="label">With Telegram</div>
+      <div class="stat-card green">
+        <div class="num" id="statTelegram">—</div>
+        <div class="lbl">With Telegram</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="num" id="statAnalyses">—</div>
+        <div class="lbl">Total Analyses</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="num" id="statChats">—</div>
+        <div class="lbl">Total Chat Messages</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="num" id="statTgSends">—</div>
+        <div class="lbl">Telegram Sends</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="num" id="statVisitors">—</div>
+        <div class="lbl">Unique Visitors</div>
       </div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden">
+
+    <!-- 14-Day Activity Chart -->
+    <div class="section-title" style="margin-top:28px">Activity — Last 14 Days</div>
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <div class="chart-legend"><div class="dot" style="background:#60a5fa"></div> Lab Analyses</div>
+        <div class="chart-legend"><div class="dot" style="background:#a78bfa"></div> Chat Messages</div>
+        <div class="chart-legend"><div class="dot" style="background:#34d399"></div> Telegram Sends</div>
+      </div>
+      <div class="bars-container" id="chart"></div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="section-title" style="margin-top:28px">Registered Users</div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <input type="text" id="searchInput" placeholder="Search username or email…" oninput="filterTable()" />
+        <span class="count" id="tableCount"></span>
+      </div>
       <table>
         <thead>
           <tr>
@@ -69,64 +183,138 @@
             <th>Username</th>
             <th>Email</th>
             <th>Telegram</th>
-            <th>Registered</th>
+            <th>Joined</th>
           </tr>
         </thead>
         <tbody id="userTable"></tbody>
       </table>
-      <div class="empty" id="emptyMsg" style="display:none">No users registered yet.</div>
     </div>
+
   </div>
 </div>
 
 <script>
+let adminKey = '';
+let allUsers = [];
+
 document.getElementById('keyInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') load();
+  if (e.key === 'Enter') login();
 });
 
-async function load() {
+document.getElementById('searchInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('searchInput').value = '', filterTable();
+});
+
+async function login() {
   const key = document.getElementById('keyInput').value.trim();
   if (!key) return;
-
-  const err = document.getElementById('errMsg');
+  const err = document.getElementById('loginErr');
   err.style.display = 'none';
-
   try {
     const res = await fetch('/api/admin/stats?key=' + encodeURIComponent(key));
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed');
-
-    document.getElementById('stats').style.display = 'block';
-    document.getElementById('statCount').textContent = data.count;
-    document.getElementById('statTelegram').textContent = data.users.filter(u => u.hasTelegram).length;
-
-    const tbody = document.getElementById('userTable');
-    tbody.innerHTML = '';
-    if (data.users.length === 0) {
-      document.getElementById('emptyMsg').style.display = 'block';
-    } else {
-      document.getElementById('emptyMsg').style.display = 'none';
-      data.users.forEach((u, i) => {
-        const tr = document.createElement('tr');
-        const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-        tr.innerHTML = `
-          <td>${i + 1}</td>
-          <td><strong>${esc(u.username)}</strong></td>
-          <td>${esc(u.email)}</td>
-          <td><span class="badge ${u.hasTelegram ? 'yes' : 'no'}">${u.hasTelegram ? 'Yes' : 'No'}</span></td>
-          <td>${date}</td>`;
-        tbody.appendChild(tr);
-      });
-    }
+    if (!res.ok) throw new Error(data.error || 'Invalid key');
+    adminKey = key;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    render(data);
   } catch (e) {
     err.textContent = '⚠️ ' + e.message;
     err.style.display = 'block';
-    document.getElementById('stats').style.display = 'none';
   }
 }
 
+async function refresh() {
+  try {
+    const res = await fetch('/api/admin/stats?key=' + encodeURIComponent(adminKey));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    render(data);
+  } catch (e) { alert('Refresh failed: ' + e.message); }
+}
+
+function logout() {
+  adminKey = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('keyInput').value = '';
+}
+
+function render(data) {
+  const { users, analytics } = data;
+  allUsers = users.list || [];
+
+  // Stats
+  document.getElementById('statUsers').textContent = users.total;
+  document.getElementById('statTelegram').textContent = users.withTelegram;
+  document.getElementById('statAnalyses').textContent = analytics.totalAnalyses;
+  document.getElementById('statChats').textContent = analytics.totalChats;
+  document.getElementById('statTgSends').textContent = analytics.totalTelegramSends;
+  document.getElementById('statVisitors').textContent = analytics.totalUniqueVisitors;
+
+  // Chart
+  const days = analytics.last14 || [];
+  const maxVal = Math.max(1, ...days.map(d => d.analyses + d.chats + d.telegramSends));
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  days.forEach(d => {
+    const total = d.analyses + d.chats + d.telegramSends;
+    const aH = Math.round((d.analyses / maxVal) * 110);
+    const cH = Math.round((d.chats / maxVal) * 110);
+    const tH = Math.round((d.telegramSends / maxVal) * 110);
+    const label = d.date.slice(5); // MM-DD
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+    group.title = `${d.date}\nAnalyses: ${d.analyses}\nChats: ${d.chats}\nTelegram: ${d.telegramSends}\nVisitors: ${d.visitors}`;
+    group.innerHTML = `
+      <div class="bar-stack">
+        ${d.telegramSends > 0 ? `<div class="bar-seg tg" style="height:${tH}px"></div>` : ''}
+        ${d.chats > 0 ? `<div class="bar-seg chat" style="height:${cH}px"></div>` : ''}
+        ${d.analyses > 0 ? `<div class="bar-seg analyze" style="height:${aH}px"></div>` : ''}
+        ${total === 0 ? `<div style="height:3px;width:100%;background:#1e3a5f;border-radius:3px"></div>` : ''}
+      </div>
+      <div class="bar-date">${label}</div>`;
+    chart.appendChild(group);
+  });
+
+  // Table
+  renderTable(allUsers);
+  document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function renderTable(users) {
+  const tbody = document.getElementById('userTable');
+  tbody.innerHTML = '';
+  document.getElementById('tableCount').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No users found.</td></tr>';
+    return;
+  }
+  users.forEach((u, i) => {
+    const date = u.createdAt
+      ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:#475569">${i + 1}</td>
+      <td><strong style="color:#f1f5f9">${esc(u.username)}</strong></td>
+      <td style="color:#94a3b8">${esc(u.email)}</td>
+      <td><span class="badge ${u.hasTelegram ? 'yes' : 'no'}">${u.hasTelegram ? '✓ Yes' : 'No'}</span></td>
+      <td style="color:#64748b">${date}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filtered = q
+    ? allUsers.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    : allUsers;
+  renderTable(filtered);
+}
+
 function esc(t) {
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 </body>

@@ -43,9 +43,10 @@ async function resizeImage(buffer) {
   }
 }
 
-// ── User Store ──
+// ── Data Store ──
 const DATA_DIR = path.join(__dirname, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const ANALYTICS_FILE = path.join(DATA_DIR, "analytics.json");
 
 function loadUsers() {
   try {
@@ -58,6 +59,34 @@ function loadUsers() {
 function saveUsers(users) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function loadAnalytics() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(ANALYTICS_FILE)) return { daily: {} };
+    return JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf8"));
+  } catch { return { daily: {} }; }
+}
+
+function saveAnalytics(data) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+}
+
+function trackEvent(type, ip) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const data = loadAnalytics();
+    if (!data.daily[today]) data.daily[today] = { analyses: 0, chats: 0, telegramSends: 0, ips: [] };
+    const day = data.daily[today];
+    if (type === "analyze") day.analyses++;
+    else if (type === "chat") day.chats++;
+    else if (type === "telegram") day.telegramSends++;
+    const cleanIp = (ip || "").replace("::ffff:", "");
+    if (cleanIp && !day.ips.includes(cleanIp)) day.ips.push(cleanIp);
+    saveAnalytics(data);
+  } catch {}
 }
 
 function generateToken() {
@@ -260,6 +289,7 @@ app.post("/api/telegram/send", authMiddleware, async (req, res) => {
         });
       }
     }
+    trackEvent("telegram", req.ip);
     res.json({ success: true });
   } catch (err) {
     console.error("Telegram send error:", err);
@@ -296,6 +326,7 @@ app.post("/api/telegram/send-guest", async (req, res) => {
         });
       }
     }
+    trackEvent("telegram", req.ip);
     res.json({ success: true });
   } catch (err) {
     console.error("Guest telegram error:", err);
@@ -303,7 +334,11 @@ app.post("/api/telegram/send-guest", async (req, res) => {
   }
 });
 
-// ── Admin Stats ──
+// ── Admin Routes ──
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
 app.get("/api/admin/stats", (req, res) => {
   const key = req.query.key || req.headers["x-admin-key"];
   const adminKey = process.env.ADMIN_KEY;
@@ -311,14 +346,54 @@ app.get("/api/admin/stats", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
 
   const users = loadUsers();
+  const analytics = loadAnalytics();
+
+  // Compute totals and last 30 days
+  const allDays = Object.keys(analytics.daily).sort();
+  let totalAnalyses = 0, totalChats = 0, totalTelegramSends = 0;
+  const allIPs = new Set();
+  allDays.forEach(d => {
+    const day = analytics.daily[d];
+    totalAnalyses += day.analyses || 0;
+    totalChats += day.chats || 0;
+    totalTelegramSends += day.telegramSends || 0;
+    (day.ips || []).forEach(ip => allIPs.add(ip));
+  });
+
+  // Last 14 days chart data
+  const last14 = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key2 = d.toISOString().slice(0, 10);
+    const day = analytics.daily[key2] || {};
+    last14.push({
+      date: key2,
+      analyses: day.analyses || 0,
+      chats: day.chats || 0,
+      telegramSends: day.telegramSends || 0,
+      visitors: (day.ips || []).length,
+    });
+  }
+
   res.json({
-    count: users.length,
-    users: users.map(u => ({
-      username: u.username,
-      email: u.email,
-      createdAt: u.createdAt || null,
-      hasTelegram: !!(u.telegramBotToken && u.telegramChatId),
-    })),
+    users: {
+      total: users.length,
+      withTelegram: users.filter(u => !!(u.telegramBotToken && u.telegramChatId)).length,
+      list: users.map(u => ({
+        username: u.username,
+        email: u.email,
+        createdAt: u.createdAt || null,
+        hasTelegram: !!(u.telegramBotToken && u.telegramChatId),
+      })),
+    },
+    analytics: {
+      totalAnalyses,
+      totalChats,
+      totalTelegramSends,
+      totalUniqueVisitors: allIPs.size,
+      last14,
+    },
   });
 });
 
@@ -366,6 +441,7 @@ app.post("/api/analyze", upload.array("labImages", 5), async (req, res) => {
       }
     }
 
+    trackEvent("analyze", req.ip);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
@@ -415,6 +491,7 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
+    trackEvent("chat", req.ip);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
