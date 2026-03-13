@@ -83,10 +83,13 @@ const emailTransporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 async function sendVerificationEmail(toEmail, username, code) {
-  await emailTransporter.sendMail({
+  const sendPromise = emailTransporter.sendMail({
     from: `"MedExplain AI" <${process.env.SMTP_USER}>`,
     to: toEmail,
     subject: "Your MedExplain AI Verification Code",
@@ -108,6 +111,11 @@ async function sendVerificationEmail(toEmail, username, code) {
         </div>
       </div>`,
   });
+
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("SMTP_TIMEOUT: Email server took too long to respond")), 20000)
+  );
+  await Promise.race([sendPromise, timeout]);
 }
 
 // Pending verifications: email → { code, username, hashedPassword, expiresAt }
@@ -189,10 +197,16 @@ app.post("/api/register", async (req, res) => {
     await sendVerificationEmail(cleanEmail, username.trim(), code);
     res.json({ message: "Verification code sent. Please check your email.", email: cleanEmail });
   } catch (err) {
-    console.error("Register error:", err);
-    const msg = err.code === "EAUTH"
-      ? "Email sending failed. Check SMTP_USER and SMTP_PASS environment variables."
-      : "Registration failed. Please try again.";
+    console.error("Register error:", err.code, err.message);
+    let msg;
+    if (err.code === "EAUTH" || err.message?.includes("Invalid login") || err.message?.includes("Username and Password"))
+      msg = "Email login failed. Your Gmail App Password may be wrong — double-check SMTP_PASS has no spaces.";
+    else if (err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT" || err.code === "ESOCKET")
+      msg = "Email server timed out. Check that SMTP_USER and SMTP_PASS are set correctly in your environment.";
+    else if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND")
+      msg = "Cannot connect to email server. Check your internet/server connection.";
+    else
+      msg = `Email error: ${err.message || "Unknown error"} (code: ${err.code || "none"})`;
     res.status(500).json({ error: msg });
   }
 });
@@ -257,8 +271,15 @@ app.post("/api/resend-code", async (req, res) => {
     await sendVerificationEmail(cleanEmail, pending.username, newCode);
     res.json({ message: "New code sent to your email." });
   } catch (err) {
-    console.error("Resend error:", err);
-    res.status(500).json({ error: "Failed to resend code. Please try again." });
+    console.error("Resend error:", err.code, err.message);
+    let msg;
+    if (err.code === "EAUTH" || err.message?.includes("Invalid login"))
+      msg = "Email login failed. Check SMTP_USER and SMTP_PASS (App Password, no spaces).";
+    else if (err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT" || err.code === "ESOCKET")
+      msg = "Email server timed out. Check SMTP credentials in your environment settings.";
+    else
+      msg = `Email error: ${err.message || "Unknown"} (code: ${err.code || "none"})`;
+    res.status(500).json({ error: msg });
   }
 });
 
@@ -483,7 +504,8 @@ app.get("/api/health", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
-  if (!process.env.GROQ_API_KEY) {
-    console.warn("⚠️  GROQ_API_KEY not set.");
-  }
+  if (!process.env.GROQ_API_KEY) console.warn("⚠️  GROQ_API_KEY not set.");
+  const smtpUser = process.env.SMTP_USER || "(not set)";
+  const smtpPass = process.env.SMTP_PASS ? `set (${process.env.SMTP_PASS.length} chars)` : "(not set)";
+  console.log(`📧 SMTP_USER: ${smtpUser} | SMTP_PASS: ${smtpPass}`);
 });
