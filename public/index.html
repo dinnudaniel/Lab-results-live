@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MedExplain AI — Lab Results in Plain English</title>
+  <!-- Google AdSense — replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -74,10 +76,6 @@
     .auth-error { background: var(--red-light); border: 1px solid #fca5a5; border-radius: 8px;
       padding: 10px 14px; color: var(--red); font-size: 0.85rem; margin-top: 12px; display: none; }
     .auth-error.visible { display: block; }
-
-    .auth-guest { text-align: center; padding: 16px; border-top: 1px solid var(--gray-100); }
-    .auth-guest a { color: var(--gray-400); font-size: 0.82rem; cursor: pointer; text-decoration: underline; }
-    .auth-guest a:hover { color: var(--gray-600); }
 
     /* ── Upload page ── */
     .upload-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 80px; }
@@ -303,9 +301,6 @@
         <div class="auth-error" id="register-error"></div>
       </div>
 
-      <div class="auth-guest">
-        <a onclick="continueAsGuest()">Continue without an account</a>
-      </div>
     </div>
   </div>
 </div>
@@ -327,6 +322,17 @@
     <div class="hero">
       <h2>Understand Your <span>Lab Results</span></h2>
       <p>Upload up to 5 pages of your lab results — we'll explain every test in plain English, then let you ask questions.</p>
+    </div>
+
+    <!-- AdSense Ad Unit — Upload Page -->
+    <div style="margin-bottom:16px;text-align:center;min-height:90px;">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="XXXXXXXXXX"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
 
     <div class="card">
@@ -544,11 +550,6 @@ async function doRegister() {
 function onAuthSuccess(user) {
   currentUser = user;
   saveUserToStorage(user);
-  showUploadPage();
-}
-
-function continueAsGuest() {
-  currentUser = null;
   showUploadPage();
 }
 
