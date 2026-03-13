@@ -544,11 +544,22 @@ async function doRegister() {
   document.getElementById('register-error').classList.remove('visible');
 
   try {
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    let res;
+    try {
+      res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+        signal: controller.signal,
+      });
+    } catch (fetchErr) {
+      if (fetchErr.name === 'AbortError') throw new Error('Request timed out. Check your internet and try again.');
+      throw fetchErr;
+    } finally {
+      clearTimeout(timer);
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     // Show verification step
@@ -593,11 +604,22 @@ async function doResend() {
   const link = document.getElementById('resend-link');
   link.textContent = 'Sending…';
   try {
-    const res = await fetch('/api/resend-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: pendingEmail }),
-    });
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), 25000);
+    let res;
+    try {
+      res = await fetch('/api/resend-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail }),
+        signal: ctrl2.signal,
+      });
+    } catch (e2) {
+      if (e2.name === 'AbortError') throw new Error('Request timed out. Try again.');
+      throw e2;
+    } finally {
+      clearTimeout(t2);
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     link.textContent = '✅ Code resent!';
