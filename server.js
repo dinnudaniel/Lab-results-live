@@ -7,8 +7,6 @@ const sharp = require("sharp");
 const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -76,49 +74,58 @@ function authMiddleware(req, res, next) {
   next();
 }
 
-// ── Email ──
-const emailTransporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  connectionTimeout: 15000,
-  greetingTimeout: 10000,
-  socketTimeout: 20000,
-  tls: { rejectUnauthorized: false },
-});
-
+// ── Email (Resend API) ──
 async function sendVerificationEmail(toEmail, username, code) {
-  const sendPromise = emailTransporter.sendMail({
-    from: `"MedExplain AI" <${process.env.SMTP_USER}>`,
-    to: toEmail,
-    subject: "Your MedExplain AI Verification Code",
-    html: `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;">
-        <div style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-          <div style="text-align:center;margin-bottom:24px;">
-            <div style="width:56px;height:56px;background:#2563eb;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;">🔬</div>
-            <h1 style="font-size:1.4rem;font-weight:800;color:#111827;margin:12px 0 4px;">MedExplain AI</h1>
-            <p style="color:#6b7280;font-size:0.9rem;margin:0;">Verify your email address</p>
-          </div>
-          <p style="color:#374151;font-size:0.95rem;margin-bottom:8px;">Hi <strong>${username}</strong>,</p>
-          <p style="color:#374151;font-size:0.95rem;margin-bottom:24px;">Enter this code on the website to verify your account:</p>
-          <div style="text-align:center;background:#eff6ff;border-radius:12px;padding:24px;margin-bottom:24px;">
-            <div style="font-size:2.5rem;font-weight:900;letter-spacing:0.3em;color:#2563eb;">${code}</div>
-            <p style="color:#6b7280;font-size:0.8rem;margin:8px 0 0;">This code expires in <strong>10 minutes</strong></p>
-          </div>
-          <p style="color:#9ca3af;font-size:0.8rem;text-align:center;margin:0;">If you didn't create an account, you can safely ignore this email.</p>
-        </div>
-      </div>`,
-  });
+  const fromAddress = process.env.SMTP_USER
+    ? `MedExplain AI <${process.env.SMTP_USER}>`
+    : "MedExplain AI <onboarding@resend.dev>";
 
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("SMTP_TIMEOUT: Email server took too long to respond")), 30000)
-  );
-  await Promise.race([sendPromise, timeout]);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+
+  let response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [toEmail],
+        subject: "Your MedExplain AI Verification Code",
+        html: `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;">
+            <div style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+              <div style="text-align:center;margin-bottom:24px;">
+                <div style="width:56px;height:56px;background:#2563eb;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;">🔬</div>
+                <h1 style="font-size:1.4rem;font-weight:800;color:#111827;margin:12px 0 4px;">MedExplain AI</h1>
+                <p style="color:#6b7280;font-size:0.9rem;margin:0;">Verify your email address</p>
+              </div>
+              <p style="color:#374151;font-size:0.95rem;margin-bottom:8px;">Hi <strong>${username}</strong>,</p>
+              <p style="color:#374151;font-size:0.95rem;margin-bottom:24px;">Enter this code on the website to verify your account:</p>
+              <div style="text-align:center;background:#eff6ff;border-radius:12px;padding:24px;margin-bottom:24px;">
+                <div style="font-size:2.5rem;font-weight:900;letter-spacing:0.3em;color:#2563eb;">${code}</div>
+                <p style="color:#6b7280;font-size:0.8rem;margin:8px 0 0;">This code expires in <strong>10 minutes</strong></p>
+              </div>
+              <p style="color:#9ca3af;font-size:0.8rem;text-align:center;margin:0;">If you didn't create an account, you can safely ignore this email.</p>
+            </div>
+          </div>`,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const result = await response.json();
+  if (!response.ok) {
+    const msg = result?.message || result?.name || "Resend API error";
+    const err = new Error(msg);
+    if (response.status === 401 || response.status === 403) err.code = "EAUTH";
+    throw err;
+  }
 }
 
 // Pending verifications: email → { code, username, hashedPassword, expiresAt }
@@ -508,7 +515,6 @@ app.get("/api/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n✅ MedExplain AI running at http://localhost:${PORT}`);
   if (!process.env.GROQ_API_KEY) console.warn("⚠️  GROQ_API_KEY not set.");
-  const smtpUser = process.env.SMTP_USER || "(not set)";
-  const smtpPass = process.env.SMTP_PASS ? `set (${process.env.SMTP_PASS.length} chars)` : "(not set)";
-  console.log(`📧 SMTP_USER: ${smtpUser} | SMTP_PASS: ${smtpPass}`);
+  const resendKey = process.env.RESEND_API_KEY ? `set (starts with ${process.env.RESEND_API_KEY.slice(0,5)}...)` : "(not set ⚠️)";
+  console.log(`📧 RESEND_API_KEY: ${resendKey} | FROM: ${process.env.SMTP_USER || "onboarding@resend.dev"}`);
 });
