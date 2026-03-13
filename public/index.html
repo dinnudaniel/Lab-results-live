@@ -299,6 +299,33 @@
         <div class="auth-error" id="register-error"></div>
       </div>
 
+      <!-- Verify Email Form (shown after register) -->
+      <div class="auth-form" id="form-verify">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:2.5rem;margin-bottom:8px;">📧</div>
+          <p style="font-size:0.9rem;color:var(--gray-600);line-height:1.5;">
+            We sent a <strong>6-digit code</strong> to<br>
+            <strong id="verify-email-display" style="color:var(--brand)"></strong>
+          </p>
+          <p style="font-size:0.82rem;color:var(--gray-400);margin-top:4px;">Check your inbox (and spam folder)</p>
+        </div>
+        <div class="form-group">
+          <label>Verification Code</label>
+          <input type="text" id="verify-code" placeholder="Enter 6-digit code"
+            maxlength="6" inputmode="numeric" pattern="[0-9]*"
+            style="font-size:1.4rem;letter-spacing:0.3em;text-align:center;font-weight:700;" />
+        </div>
+        <button class="auth-btn" id="verify-btn" onclick="doVerify()">Verify & Create Account</button>
+        <div class="auth-error" id="verify-error"></div>
+        <div style="text-align:center;margin-top:14px;">
+          <span style="font-size:0.82rem;color:var(--gray-400);">Didn't receive it? </span>
+          <a onclick="doResend()" style="font-size:0.82rem;color:var(--brand);cursor:pointer;text-decoration:underline;" id="resend-link">Resend code</a>
+        </div>
+        <div style="text-align:center;margin-top:8px;">
+          <a onclick="switchAuthTab('register')" style="font-size:0.82rem;color:var(--gray-400);cursor:pointer;text-decoration:underline;">← Back to register</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -468,11 +495,7 @@ function loadUserFromStorage() {
 // Auth UI
 // ════════════════════════════════════════
 function switchAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
-  });
-  document.getElementById('form-login').classList.toggle('active', tab === 'login');
-  document.getElementById('form-register').classList.toggle('active', tab === 'register');
+  showAuthForm(tab);
   document.getElementById('login-error').classList.remove('visible');
   document.getElementById('register-error').classList.remove('visible');
 }
@@ -508,6 +531,8 @@ async function doLogin() {
   }
 }
 
+let pendingEmail = ''; // email waiting for verification
+
 async function doRegister() {
   const username = document.getElementById('reg-username').value.trim();
   const email = document.getElementById('reg-email').value.trim();
@@ -515,7 +540,7 @@ async function doRegister() {
   if (!username || !email || !password) return showAuthError('register', 'Please fill in all fields.');
 
   const btn = document.getElementById('register-btn');
-  btn.disabled = true; btn.textContent = 'Creating account…';
+  btn.disabled = true; btn.textContent = 'Sending code…';
   document.getElementById('register-error').classList.remove('visible');
 
   try {
@@ -526,12 +551,71 @@ async function doRegister() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
-    onAuthSuccess(data);
+    // Show verification step
+    pendingEmail = data.email;
+    document.getElementById('verify-email-display').textContent = data.email;
+    document.getElementById('verify-code').value = '';
+    document.getElementById('verify-error').classList.remove('visible');
+    showAuthForm('verify');
+    setTimeout(() => document.getElementById('verify-code').focus(), 100);
   } catch (err) {
     showAuthError('register', err.message);
   } finally {
     btn.disabled = false; btn.textContent = 'Create Account';
   }
+}
+
+async function doVerify() {
+  const code = document.getElementById('verify-code').value.trim();
+  if (!code) return showAuthError('verify', 'Please enter the 6-digit code from your email.');
+
+  const btn = document.getElementById('verify-btn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  document.getElementById('verify-error').classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingEmail, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Verification failed');
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError('verify', err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verify & Create Account';
+  }
+}
+
+async function doResend() {
+  const link = document.getElementById('resend-link');
+  link.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/resend-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingEmail }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    link.textContent = '✅ Code resent!';
+    setTimeout(() => { link.textContent = 'Resend code'; }, 4000);
+  } catch (err) {
+    showAuthError('verify', err.message);
+    link.textContent = 'Resend code';
+  }
+}
+
+function showAuthForm(name) {
+  ['login','register','verify'].forEach(f => {
+    document.getElementById('form-' + f).classList.toggle('active', f === name);
+  });
+  // update tab styling
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && name === 'login') || (i === 1 && name === 'register'));
+  });
 }
 
 function onAuthSuccess(user) {
@@ -582,11 +666,10 @@ window.addEventListener('load', () => {
 
 // Enter key on auth forms
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (document.getElementById('form-login').classList.contains('active') &&
-        document.getElementById('page-auth').style.display !== 'none') doLogin();
-    else if (document.getElementById('form-register').classList.contains('active') &&
-             document.getElementById('page-auth').style.display !== 'none') doRegister();
+  if (e.key === 'Enter' && document.getElementById('page-auth').style.display !== 'none') {
+    if (document.getElementById('form-login').classList.contains('active')) doLogin();
+    else if (document.getElementById('form-register').classList.contains('active')) doRegister();
+    else if (document.getElementById('form-verify').classList.contains('active')) doVerify();
   }
 });
 

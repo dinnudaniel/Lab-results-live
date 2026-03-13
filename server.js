@@ -7,6 +7,7 @@ const sharp = require("sharp");
 const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +76,43 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+// ── Email ──
+const emailTransporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendVerificationEmail(toEmail, username, code) {
+  await emailTransporter.sendMail({
+    from: `"MedExplain AI" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: "Your MedExplain AI Verification Code",
+    html: `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;">
+        <div style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="width:56px;height:56px;background:#2563eb;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;">🔬</div>
+            <h1 style="font-size:1.4rem;font-weight:800;color:#111827;margin:12px 0 4px;">MedExplain AI</h1>
+            <p style="color:#6b7280;font-size:0.9rem;margin:0;">Verify your email address</p>
+          </div>
+          <p style="color:#374151;font-size:0.95rem;margin-bottom:8px;">Hi <strong>${username}</strong>,</p>
+          <p style="color:#374151;font-size:0.95rem;margin-bottom:24px;">Enter this code on the website to verify your account:</p>
+          <div style="text-align:center;background:#eff6ff;border-radius:12px;padding:24px;margin-bottom:24px;">
+            <div style="font-size:2.5rem;font-weight:900;letter-spacing:0.3em;color:#2563eb;">${code}</div>
+            <p style="color:#6b7280;font-size:0.8rem;margin:8px 0 0;">This code expires in <strong>10 minutes</strong></p>
+          </div>
+          <p style="color:#9ca3af;font-size:0.8rem;text-align:center;margin:0;">If you didn't create an account, you can safely ignore this email.</p>
+        </div>
+      </div>`,
+  });
+}
+
+// Pending verifications: email → { code, username, hashedPassword, expiresAt }
+const pendingVerifications = new Map();
+
 // ── AI Prompts ──
 const ANALYZE_SYSTEM = `You are MedExplain AI, a friendly medical assistant that explains lab test results in plain, everyday English.
 
@@ -120,7 +158,7 @@ RULES:
 - Never guess at a diagnosis
 - Keep answers focused and concise`;
 
-// ── Register ──
+// ── Register — sends verification code ──
 app.post("/api/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -138,23 +176,89 @@ app.post("/api/register", async (req, res) => {
       return res.status(409).json({ error: "This email is already registered. Please login." });
 
     const hash = await bcrypt.hash(password, 10);
+    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
+    const cleanEmail = email.toLowerCase().trim();
+
+    pendingVerifications.set(cleanEmail, {
+      code,
+      username: username.trim(),
+      hashedPassword: hash,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    });
+
+    await sendVerificationEmail(cleanEmail, username.trim(), code);
+    res.json({ message: "Verification code sent. Please check your email.", email: cleanEmail });
+  } catch (err) {
+    console.error("Register error:", err);
+    const msg = err.code === "EAUTH"
+      ? "Email sending failed. Check SMTP_USER and SMTP_PASS environment variables."
+      : "Registration failed. Please try again.";
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── Verify Email ──
+app.post("/api/verify-email", async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code)
+      return res.status(400).json({ error: "Email and code are required." });
+
+    const cleanEmail = email.toLowerCase().trim();
+    const pending = pendingVerifications.get(cleanEmail);
+
+    if (!pending)
+      return res.status(400).json({ error: "No pending registration for this email. Please register again." });
+    if (Date.now() > pending.expiresAt)
+      return res.status(400).json({ error: "Code has expired. Please register again." });
+    if (pending.code !== code.trim())
+      return res.status(400).json({ error: "Incorrect code. Please check your email and try again." });
+
+    // Code correct — create the account
+    const users = loadUsers();
+    if (users.find(u => u.email === cleanEmail))
+      return res.status(409).json({ error: "This email is already registered. Please login." });
+
     const token = generateToken();
     const user = {
       id: Date.now().toString(),
-      username: username.trim(),
-      email: email.toLowerCase().trim(),
-      password: hash,
+      username: pending.username,
+      email: cleanEmail,
+      password: pending.hashedPassword,
       token,
       telegramBotToken: "",
       telegramChatId: "",
     };
     users.push(user);
     saveUsers(users);
+    pendingVerifications.delete(cleanEmail);
 
     res.json({ token, username: user.username, email: user.email, hasTelegram: false });
   } catch (err) {
-    console.error("Register error:", err);
-    res.status(500).json({ error: "Registration failed. Please try again." });
+    console.error("Verify error:", err);
+    res.status(500).json({ error: "Verification failed. Please try again." });
+  }
+});
+
+// ── Resend Code ──
+app.post("/api/resend-code", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const cleanEmail = (email || "").toLowerCase().trim();
+    const pending = pendingVerifications.get(cleanEmail);
+    if (!pending)
+      return res.status(400).json({ error: "No pending registration found. Please register again." });
+
+    const newCode = String(Math.floor(100000 + Math.random() * 900000));
+    pending.code = newCode;
+    pending.expiresAt = Date.now() + 10 * 60 * 1000;
+    pendingVerifications.set(cleanEmail, pending);
+
+    await sendVerificationEmail(cleanEmail, pending.username, newCode);
+    res.json({ message: "New code sent to your email." });
+  } catch (err) {
+    console.error("Resend error:", err);
+    res.status(500).json({ error: "Failed to resend code. Please try again." });
   }
 });
 
