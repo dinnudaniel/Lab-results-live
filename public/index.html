@@ -49,7 +49,14 @@
 
     .auth-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 
-    .auth-form { padding: 24px; }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
+    .auth-tab { flex: 1; padding: 14px; font-size: 0.92rem; font-weight: 600; text-align: center;
+      cursor: pointer; border: none; background: none; color: var(--gray-400);
+      border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+    .auth-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+    .auth-form { padding: 24px; display: none; }
+    .auth-form.active { display: block; }
 
     .guest-btn { width: 100%; padding: 13px; background: white; color: var(--gray-600);
       font-size: 0.9rem; font-weight: 600; border: 1px solid var(--gray-200); border-radius: 10px;
@@ -252,7 +259,13 @@
     </div>
 
     <div class="auth-card">
-      <div class="auth-form" id="form-login">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+        <button class="auth-tab" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Login -->
+      <div class="auth-form active" id="form-login">
         <div class="form-group">
           <label>Email Address</label>
           <input type="email" id="login-email" placeholder="you@gmail.com" autocomplete="email" />
@@ -263,6 +276,25 @@
         </div>
         <button class="auth-btn" id="login-btn" onclick="doLogin()">Login</button>
         <div class="auth-error" id="login-error"></div>
+        <button class="guest-btn" onclick="continueAsGuest()">Continue as Guest</button>
+      </div>
+
+      <!-- Register -->
+      <div class="auth-form" id="form-register">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="reg-username" placeholder="Your name" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="reg-email" placeholder="you@gmail.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="At least 6 characters" autocomplete="new-password" />
+        </div>
+        <button class="auth-btn" id="register-btn" onclick="doRegister()">Create Account</button>
+        <div class="auth-error" id="register-error"></div>
         <button class="guest-btn" onclick="continueAsGuest()">Continue as Guest</button>
       </div>
     </div>
@@ -412,6 +444,15 @@ function loadUserFromStorage() {
 // ════════════════════════════════════════
 // Auth UI
 // ════════════════════════════════════════
+function switchTab(tab) {
+  ['login', 'register'].forEach(t => {
+    document.getElementById('form-' + t).classList.toggle('active', t === tab);
+    document.querySelectorAll('.auth-tab').forEach((el, i) => {
+      el.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+    });
+  });
+}
+
 function showAuthError(formId, msg) {
   const el = document.getElementById(formId + '-error');
   el.textContent = msg;
@@ -440,6 +481,32 @@ async function doLogin() {
     showAuthError('login', err.message);
   } finally {
     btn.disabled = false; btn.textContent = 'Login';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username || !email || !password) return showAuthError('register', 'Please fill in all fields.');
+
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  document.getElementById('register-error').classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError('register', err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account';
   }
 }
 
@@ -496,10 +563,11 @@ window.addEventListener('load', () => {
   showUploadPage();
 });
 
-// Enter key on login form
+// Enter key on auth forms
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('page-auth').style.display !== 'none') {
-    doLogin();
+    if (document.getElementById('form-login').classList.contains('active')) doLogin();
+    else doRegister();
   }
 });
 

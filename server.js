@@ -119,6 +119,45 @@ RULES:
 - Never guess at a diagnosis
 - Keep answers focused and concise`;
 
+// ── Register ──
+app.post("/api/register", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password)
+      return res.status(400).json({ error: "All fields are required." });
+    if (username.trim().length < 2)
+      return res.status(400).json({ error: "Username must be at least 2 characters." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    if (password.length < 6)
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+
+    const users = loadUsers();
+    if (users.find(u => u.email === email.toLowerCase().trim()))
+      return res.status(409).json({ error: "This email is already registered. Please login." });
+
+    const hash = await bcrypt.hash(password, 10);
+    const token = generateToken();
+    const user = {
+      id: Date.now().toString(),
+      username: username.trim(),
+      email: email.toLowerCase().trim(),
+      password: hash,
+      token,
+      createdAt: new Date().toISOString(),
+      telegramBotToken: "",
+      telegramChatId: "",
+    };
+    users.push(user);
+    saveUsers(users);
+
+    res.json({ token, username: user.username, email: user.email, hasTelegram: false });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(500).json({ error: "Registration failed. Please try again." });
+  }
+});
+
 // ── Login ──
 app.post("/api/login", async (req, res) => {
   try {
@@ -262,6 +301,25 @@ app.post("/api/telegram/send-guest", async (req, res) => {
     console.error("Guest telegram error:", err);
     res.status(500).json({ error: "Failed to send to Telegram. Please try again." });
   }
+});
+
+// ── Admin Stats ──
+app.get("/api/admin/stats", (req, res) => {
+  const key = req.query.key || req.headers["x-admin-key"];
+  const adminKey = process.env.ADMIN_KEY;
+  if (!adminKey || key !== adminKey)
+    return res.status(401).json({ error: "Unauthorized" });
+
+  const users = loadUsers();
+  res.json({
+    count: users.length,
+    users: users.map(u => ({
+      username: u.username,
+      email: u.email,
+      createdAt: u.createdAt || null,
+      hasTelegram: !!(u.telegramBotToken && u.telegramChatId),
+    })),
+  });
 });
 
 // ── Analyze ──

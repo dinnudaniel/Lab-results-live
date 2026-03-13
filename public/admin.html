@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedExplain AI — Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f3f4f6; color: #111827; min-height: 100vh; padding: 32px 16px; }
+    .wrap { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .sub { color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; }
+    .card { background: white; border-radius: 14px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); padding: 24px; margin-bottom: 20px; }
+    .key-row { display: flex; gap: 10px; margin-bottom: 0; }
+    .key-row input { flex: 1; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 9px;
+      font-size: 0.92rem; outline: none; }
+    .key-row input:focus { border-color: #2563eb; }
+    .key-row button { padding: 10px 20px; background: #2563eb; color: white; border: none;
+      border-radius: 9px; font-size: 0.92rem; font-weight: 600; cursor: pointer; }
+    .key-row button:hover { background: #1d4ed8; }
+    .stat-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat { background: #eff6ff; border-radius: 12px; padding: 16px 24px; flex: 1; min-width: 120px; }
+    .stat .num { font-size: 2rem; font-weight: 900; color: #2563eb; }
+    .stat .label { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { text-align: left; padding: 10px 12px; background: #f9fafb; color: #6b7280;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 1px solid #e5e7eb; }
+    td { padding: 11px 12px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9fafb; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+    .badge.yes { background: #dcfce7; color: #16a34a; }
+    .badge.no { background: #f3f4f6; color: #9ca3af; }
+    .error { color: #dc2626; font-size: 0.88rem; margin-top: 12px; }
+    .empty { color: #9ca3af; text-align: center; padding: 32px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔬 MedExplain AI — Admin</h1>
+  <p class="sub">Enter your ADMIN_KEY to view registered users.</p>
+
+  <div class="card">
+    <div class="key-row">
+      <input type="password" id="keyInput" placeholder="Admin key" autocomplete="off" />
+      <button onclick="load()">View Stats</button>
+    </div>
+    <div class="error" id="errMsg" style="display:none"></div>
+  </div>
+
+  <div id="stats" style="display:none">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="num" id="statCount">0</div>
+        <div class="label">Registered Users</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="statTelegram">0</div>
+        <div class="label">With Telegram</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Telegram</th>
+            <th>Registered</th>
+          </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" style="display:none">No users registered yet.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('keyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') load();
+});
+
+async function load() {
+  const key = document.getElementById('keyInput').value.trim();
+  if (!key) return;
+
+  const err = document.getElementById('errMsg');
+  err.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/admin/stats?key=' + encodeURIComponent(key));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    document.getElementById('stats').style.display = 'block';
+    document.getElementById('statCount').textContent = data.count;
+    document.getElementById('statTelegram').textContent = data.users.filter(u => u.hasTelegram).length;
+
+    const tbody = document.getElementById('userTable');
+    tbody.innerHTML = '';
+    if (data.users.length === 0) {
+      document.getElementById('emptyMsg').style.display = 'block';
+    } else {
+      document.getElementById('emptyMsg').style.display = 'none';
+      data.users.forEach((u, i) => {
+        const tr = document.createElement('tr');
+        const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td><strong>${esc(u.username)}</strong></td>
+          <td>${esc(u.email)}</td>
+          <td><span class="badge ${u.hasTelegram ? 'yes' : 'no'}">${u.hasTelegram ? 'Yes' : 'No'}</span></td>
+          <td>${date}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch (e) {
+    err.textContent = '⚠️ ' + e.message;
+    err.style.display = 'block';
+    document.getElementById('stats').style.display = 'none';
+  }
+}
+
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
