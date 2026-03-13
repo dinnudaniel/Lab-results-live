@@ -76,6 +76,12 @@ function authMiddleware(req, res, next) {
 
 // ── Email (Resend API) ──
 async function sendVerificationEmail(toEmail, username, code) {
+  if (!process.env.RESEND_API_KEY) {
+    const err = new Error("RESEND_API_KEY is not set in environment variables.");
+    err.code = "EAUTH";
+    throw err;
+  }
+
   // Use verified Resend domain sender (free plan). To use your own email,
   // verify a custom domain at resend.com/domains and set RESEND_FROM env var.
   const fromAddress = process.env.RESEND_FROM || "MedExplain AI <onboarding@resend.dev>";
@@ -209,12 +215,14 @@ app.post("/api/register", async (req, res) => {
   } catch (err) {
     console.error("Register error:", err.code, err.message);
     let msg;
-    if (err.code === "EAUTH" || err.message?.includes("Invalid login") || err.message?.includes("Username and Password"))
-      msg = "Email login failed. Your Gmail App Password may be wrong — double-check SMTP_PASS has no spaces.";
-    else if (err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT" || err.code === "ESOCKET")
-      msg = "Email server timed out. Check that SMTP_USER and SMTP_PASS are set correctly in your environment.";
+    if (err.code === "EAUTH")
+      msg = "Resend API key is invalid or unauthorized. Check your RESEND_API_KEY in Render environment variables.";
+    else if (err.message?.includes("Invalid login") || err.message?.includes("Username and Password"))
+      msg = "Email auth failed. Check your RESEND_API_KEY.";
+    else if (err.name === "AbortError" || err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT")
+      msg = "Email request timed out. Check your RESEND_API_KEY is set in Render.";
     else if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND")
-      msg = "Cannot connect to email server. Check your internet/server connection.";
+      msg = "Cannot connect to Resend. Check your server connection.";
     else
       msg = `Email error: ${err.message || "Unknown error"} (code: ${err.code || "none"})`;
     res.status(500).json({ error: msg });
@@ -281,12 +289,14 @@ app.post("/api/resend-code", async (req, res) => {
     await sendVerificationEmail(cleanEmail, pending.username, newCode);
     res.json({ message: "New code sent to your email." });
   } catch (err) {
-    console.error("Resend error:", err.code, err.message);
+    console.error("Resend-code error:", err.code, err.message);
     let msg;
-    if (err.code === "EAUTH" || err.message?.includes("Invalid login"))
-      msg = "Email login failed. Check SMTP_USER and SMTP_PASS (App Password, no spaces).";
-    else if (err.message?.includes("SMTP_TIMEOUT") || err.code === "ETIMEDOUT" || err.code === "ESOCKET")
-      msg = "Email server timed out. Check SMTP credentials in your environment settings.";
+    if (err.code === "EAUTH")
+      msg = "Resend API key is invalid or not set. Check RESEND_API_KEY in Render environment variables.";
+    else if (err.name === "AbortError" || err.code === "ETIMEDOUT")
+      msg = "Email request timed out. Check your RESEND_API_KEY is set in Render.";
+    else if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND")
+      msg = "Cannot connect to Resend. Check your server connection.";
     else
       msg = `Email error: ${err.message || "Unknown"} (code: ${err.code || "none"})`;
     res.status(500).json({ error: msg });
